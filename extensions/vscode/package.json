@@ -1,0 +1,52 @@
+{
+  "name": "green-coding-advisor",
+  "displayName": "Green Coding Advisor",
+  "description": "Inline green-score insights and quick suggestions powered by the Green Coding Advisor backend.",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": ["onCommand:greenCodingAdvisor.analyzeSelection"],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "greenCodingAdvisor.analyzeSelection",
+        "title": "Green Coding Advisor: Analyze Selection"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "Green Coding Advisor",
+      "properties": {
+        "greenCodingAdvisor.backendUrl": {
+          "type": "string",
+          "default": "http://127.0.0.1:8000",
+          "description": "Backend base URL (e.g., http://127.0.0.1:8000)."
+        },
+        "greenCodingAdvisor.authToken": {
+          "type": "string",
+          "default": "",
+          "description": "Bearer token used for authenticated requests."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "echo \"No lint configured\""
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.0",
+    "@types/vscode": "^1.75.0",
+    "typescript": "^5.3.3",
+    "esbuild": "^0.19.11"
+  },
+  "dependencies": {
+    "cross-fetch": "^4.0.0"
+  }
+}
+

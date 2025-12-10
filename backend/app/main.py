@@ -5,29 +5,50 @@ from fastapi.exceptions import RequestValidationError
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 import time
 import traceback
 from contextlib import asynccontextmanager
 
 from .config import settings
 from .logger import green_logger
-from .database import engine, Base
-from .routers import auth, submissions, metrics, advisor, chatbot, projects, teams
+from .mongo import get_mongo_db
+from .routers import auth, submissions, metrics, advisor, chatbot, projects, teams, badges, reports, streaks
+from .badge_service import badge_service
+from .security import security_middleware
 
 
-# Create database tables
+# Initialize MongoDB and default badges
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    Base.metadata.create_all(bind=engine)
-    green_logger.logger.info("Database tables created successfully")
+    green_logger.logger.info("Connecting to MongoDB...")
+    
+    # Validate production configuration
+    if settings.is_production():
+        validation_errors = settings.validate_production()
+        if validation_errors:
+            error_msg = "Production configuration errors detected:\n" + "\n".join(f"  - {err}" for err in validation_errors)
+            green_logger.logger.error(error_msg)
+            raise RuntimeError(f"Invalid production configuration. {error_msg}")
+        green_logger.logger.info("Production configuration validated successfully")
+    
+    # Initialize default badges and indexes
+    try:
+        db = await get_mongo_db().__anext__()
+        await badge_service.initialize_default_badges(db)
+        green_logger.logger.info("Default badges initialized")
+        
+        # Create MongoDB indexes
+        from .mongo_indexes import create_indexes
+        indexes = await create_indexes(db)
+        green_logger.logger.info(f"MongoDB indexes created: {len(indexes)} indexes")
+    except Exception as e:
+        green_logger.logger.warning(f"Failed to initialize badges or indexes: {e}")
+    
     yield
     # Shutdown
     green_logger.logger.info("Application shutting down")
-
-
-# Rate limiter
-limiter = Limiter(key_func=get_remote_address)
 
 
 def create_app() -> FastAPI:
@@ -40,17 +61,27 @@ def create_app() -> FastAPI:
         redoc_url="/redoc" if settings.debug else None
     )
 
-    # Add rate limiter
-    app.state.limiter = limiter
-    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    # Initialize and add rate limiter
+    try:
+        from .rate_limiter import limiter
+        app.state.limiter = limiter
+        app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+        app.add_middleware(SlowAPIMiddleware)
+        green_logger.logger.info("Rate limiter initialized successfully")
+    except Exception as e:
+        green_logger.logger.warning(f"Rate limiter initialization failed: {e}. Continuing without rate limiting.")
+
+    # Security headers middleware (must be before CORS)
+    app.middleware("http")(security_middleware)
 
     # CORS middleware
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.allowed_origins,
+        allow_origins=settings.allowed_origins_list,
         allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
         allow_headers=["*"],
+        expose_headers=["X-Total-Count", "X-Page", "X-Per-Page"],
     )
 
     # Request logging middleware
@@ -94,17 +125,9 @@ def create_app() -> FastAPI:
             }
         )
 
-    # Validation error handler
-    @app.exception_handler(RequestValidationError)
-    async def validation_exception_handler(request: Request, exc: RequestValidationError):
-        return JSONResponse(
-            status_code=422,
-            content={
-                "error": "Validation error",
-                "message": "Invalid request data",
-                "details": exc.errors()
-            }
-        )
+    # Register error handlers
+    from .error_handlers import register_error_handlers
+    register_error_handlers(app)
 
     # Include routers
     app.include_router(auth.router, prefix="/auth", tags=["Authentication"]) 
@@ -113,11 +136,13 @@ def create_app() -> FastAPI:
     app.include_router(advisor.router, prefix="/advisor", tags=["AI Advisor"]) 
     app.include_router(chatbot.router, prefix="/chat", tags=["AI Chatbot"]) 
     app.include_router(projects.router, prefix="/projects", tags=["Projects"]) 
-    app.include_router(teams.router, prefix="/teams", tags=["Team Collaboration"]) 
+    app.include_router(teams.router, prefix="/teams", tags=["Team Collaboration"])
+    app.include_router(badges.router, prefix="/badges", tags=["Badges & Achievements"])
+    app.include_router(reports.router, prefix="/reports", tags=["Reports"])
+    app.include_router(streaks.router, prefix="/streaks", tags=["Streaks"]) 
 
     @app.get("/health", tags=["Health"])
-    @limiter.limit("10/minute")
-    def health(request: Request):
+    async def health():
         return {
             "status": "healthy",
             "version": "1.0.0",
@@ -138,5 +163,3 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
-
-

@@ -29,6 +29,12 @@ class User(Base):
     role = Column(Enum(UserRole), default=UserRole.DEVELOPER)
     is_active = Column(Boolean, default=True)
     is_verified = Column(Boolean, default=False)
+    email_verification_token = Column(String(255), nullable=True)
+    password_reset_token = Column(String(255), nullable=True)
+    password_reset_expires = Column(DateTime(timezone=True), nullable=True)
+    current_streak = Column(Integer, default=0)  # Current daily submission streak
+    longest_streak = Column(Integer, default=0)  # Longest streak achieved
+    last_submission_date = Column(DateTime(timezone=True))  # Date of last submission
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     

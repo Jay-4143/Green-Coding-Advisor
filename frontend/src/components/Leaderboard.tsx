@@ -11,18 +11,50 @@ interface LeaderboardEntry {
   avatar?: string
 }
 
+interface MyPerformance {
+  rank: number | null
+  greenScore: number
+  carbonSaved: number
+}
+
 const Leaderboard: React.FC = () => {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [timeframe, setTimeframe] = useState<'week' | 'month' | 'all'>('month')
+  const [me, setMe] = useState<{ id: number | null; username: string | null }>({ id: null, username: null })
+  const [myPerf, setMyPerf] = useState<MyPerformance>({ rank: null, greenScore: 0, carbonSaved: 0 })
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
       try {
         setLoading(true)
-        const res = await apiClient.get('/metrics/leaderboard', { params: { timeframe } })
-        const entries = res.data?.entries || []
+        const [meRes, lbRes] = await Promise.all([
+          apiClient.get('/auth/me').catch(() => ({ data: {} })),
+          apiClient.get('/metrics/leaderboard', { params: { timeframe } }),
+        ])
+        const entries: LeaderboardEntry[] = lbRes.data?.entries || []
         setLeaderboard(entries)
+
+        const uid = meRes.data?.id || null
+        const username = meRes.data?.username || null
+        setMe({ id: uid, username })
+
+        if (uid) {
+          try {
+            const summaryRes = await apiClient.get(`/metrics/summary?user_id=${uid}`)
+            const summary = summaryRes.data || {}
+            const myEntry = entries.find((e) => e.username === username || e.rank === 1 && uid === uid) // best-effort match by username
+            setMyPerf({
+              rank: myEntry?.rank ?? null,
+              greenScore: summary.average_green_score || 0,
+              carbonSaved: summary.total_co2_saved || 0,
+            })
+          } catch (e) {
+            setMyPerf((prev) => ({ ...prev, rank: null }))
+          }
+        } else {
+          setMyPerf({ rank: null, greenScore: 0, carbonSaved: 0 })
+        }
       } catch (error) {
         console.error('Error fetching leaderboard:', error)
       } finally {
@@ -186,15 +218,15 @@ const Leaderboard: React.FC = () => {
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Performance</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="text-center p-4 bg-green-50 rounded-lg">
-            <p className="text-2xl font-bold text-green-600">#4</p>
+            <p className="text-2xl font-bold text-green-600">{myPerf.rank ? `#${myPerf.rank}` : '—'}</p>
             <p className="text-sm text-green-600">Current Rank</p>
           </div>
           <div className="text-center p-4 bg-blue-50 rounded-lg">
-            <p className="text-2xl font-bold text-blue-600">78</p>
-            <p className="text-sm text-blue-600">Green Score</p>
+            <p className="text-2xl font-bold text-blue-600">{myPerf.greenScore.toFixed(1)}</p>
+            <p className="text-sm text-blue-600">Avg Green Score</p>
           </div>
           <div className="text-center p-4 bg-purple-50 rounded-lg">
-            <p className="text-2xl font-bold text-purple-600">2.4</p>
+            <p className="text-2xl font-bold text-purple-600">{(myPerf.carbonSaved / 1000).toFixed(2)}</p>
             <p className="text-sm text-purple-600">kg CO₂ Saved</p>
           </div>
         </div>

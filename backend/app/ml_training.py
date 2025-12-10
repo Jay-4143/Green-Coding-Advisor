@@ -5,23 +5,85 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 import pandas as pd
 import numpy as np
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 import joblib
 import os
+from pathlib import Path
 
 class GreenCodingModelTrainer:
     """Trainer for Green Coding Advisor AI models"""
     
-    def __init__(self, model_name: str = "microsoft/codebert-base"):
+    def __init__(self, model_name: str = "microsoft/codebert-base", dataset_path: Optional[str] = None):
         self.model_name = model_name
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModel.from_pretrained(model_name)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
-    def prepare_training_data(self) -> Tuple[List[str], List[Dict]]:
-        """Prepare training data from various sources"""
+        # Set up paths
+        app_dir = Path(__file__).resolve().parent
+        self.models_dir = app_dir / "models"
+        project_root = Path(__file__).resolve().parents[2]
+        default_dataset_path = project_root / "dataset" / "code_dataset.csv"
+        self.dataset_path = Path(dataset_path).expanduser() if dataset_path else default_dataset_path
         
-        # 1. Synthetic Code Dataset
+    def _load_dataset_samples(self) -> List[Dict]:
+        """Load samples from dataset/code_dataset.csv if it exists."""
+        
+        path = Path(self.dataset_path)
+        if not path.exists():
+            print(f"⚠️  Dataset file not found at {path}. Falling back to synthetic data only.")
+            return []
+        
+        df = pd.read_csv(path)
+        samples: List[Dict] = []
+        
+        for _, row in df.iterrows():
+            code = row.get("code")
+            if not isinstance(code, str) or not code.strip():
+                continue
+            
+            language = (row.get("language") or "python").strip()
+            metrics = {
+                "green_score": row.get("green_score"),
+                "energy_wh": row.get("energy_wh"),
+                "co2_g": row.get("co2_g"),
+                "cpu_time_ms": row.get("cpu_time_ms"),
+                "memory_mb": row.get("memory_mb"),
+                "complexity": row.get("complexity"),
+                "duration": row.get("duration"),
+                "emissions": row.get("emissions"),
+                "emissions_rate": row.get("emissions_rate"),
+                "energy_consumed": row.get("energy_consumed"),
+                "country_name": row.get("country_name"),
+                "region": row.get("region"),
+                "cloud_provider": row.get("cloud_provider"),
+                "cloud_region": row.get("cloud_region"),
+                "os": row.get("os"),
+                "cpu_model": row.get("cpu_model"),
+                "gpu_model": row.get("gpu_model"),
+                "ram_total_size": row.get("ram_total_size"),
+                "tracking_mode": row.get("tracking_mode"),
+                "on_cloud": row.get("on_cloud"),
+                "pue": row.get("pue"),
+            }
+            
+            samples.append(
+                {
+                    "code": code,
+                    "language": language,
+                    "metrics": metrics,
+                }
+            )
+        
+        print(f"📂 Loaded {len(samples)} rows from {path}")
+        return samples
+    
+    def prepare_training_data(self) -> Tuple[List[str], List[Dict]]:
+        """Prepare training data from the curated dataset plus synthetic sources."""
+        
+        dataset_samples = self._load_dataset_samples()
+        
+        # 1. Synthetic Code Dataset (augmentation/fallback)
         synthetic_data = self._generate_synthetic_code_samples()
         
         # 2. Open Source Code Analysis
@@ -33,7 +95,9 @@ class GreenCodingModelTrainer:
         # 4. Code Quality Metrics
         quality_data = self._collect_quality_metrics()
         
-        return synthetic_data + open_source_data + benchmark_data + quality_data
+        combined = dataset_samples + synthetic_data + open_source_data + benchmark_data + quality_data
+        print(f"🧮 Total training samples prepared: {len(combined)}")
+        return combined
     
     def _generate_synthetic_code_samples(self) -> List[Dict]:
         """Generate synthetic code samples with known efficiency metrics"""
@@ -127,7 +191,24 @@ def process_list(items):
                 "complexity": 2
             }
         
-        # Add more patterns...
+        else:
+            # Generic fallback snippet
+            code = """
+def generic_handler(items):
+    total = 0
+    for item in items:
+        total += item
+    return total / len(items) if items else 0
+"""
+            metrics = {
+                "green_score": 60,
+                "energy_wh": 0.035,
+                "co2_g": 9.0,
+                "cpu_time_ms": 1.5,
+                "memory_mb": 6.0,
+                "complexity": 3
+            }
+        
         return code, metrics
     
     def _collect_open_source_metrics(self) -> List[Dict]:
@@ -201,7 +282,8 @@ def process_list(items):
         print(f"Green Score Model - Train R²: {train_score:.3f}, Test R²: {test_score:.3f}")
         
         # Save model
-        joblib.dump(model, "models/green_score_model.pkl")
+        os.makedirs(self.models_dir, exist_ok=True)
+        joblib.dump(model, self.models_dir / "green_score_model.pkl")
         
         return model
     
@@ -298,7 +380,8 @@ def process_list(items):
         
         print(f"Energy Model - Train R²: {train_score:.3f}, Test R²: {test_score:.3f}")
         
-        joblib.dump(model, "models/energy_model.pkl")
+        os.makedirs(self.models_dir, exist_ok=True)
+        joblib.dump(model, self.models_dir / "energy_model.pkl")
         return model
     
     def train_co2_model(self, training_data: List[Dict]) -> RandomForestRegressor:
@@ -325,7 +408,8 @@ def process_list(items):
         
         print(f"CO2 Model - Train R²: {train_score:.3f}, Test R²: {test_score:.3f}")
         
-        joblib.dump(model, "models/co2_model.pkl")
+        os.makedirs(self.models_dir, exist_ok=True)
+        joblib.dump(model, self.models_dir / "co2_model.pkl")
         return model
     
     def train_all_models(self):
@@ -339,7 +423,7 @@ def process_list(items):
         print(f"✅ Prepared {len(training_data)} training samples")
         
         # Create models directory
-        os.makedirs("models", exist_ok=True)
+        os.makedirs(self.models_dir, exist_ok=True)
         
         # Train individual models
         print("🤖 Training Green Score model...")

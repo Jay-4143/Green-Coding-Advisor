@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "Green Coding Advisor",
+  "description": "Send code snippets to the Green Coding Advisor backend to get green score, energy, and CO2 insights while browsing.",
+  "version": "0.1.0",
+  "action": {
+    "default_title": "Green Coding Advisor",
+    "default_popup": "popup.html"
+  },
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "*://localhost:8000/*",
+    "*://127.0.0.1:8000/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
+

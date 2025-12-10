@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { 
   Chart as ChartJS, 
   CategoryScale, 
@@ -47,6 +48,8 @@ interface LanguageStats {
   submissions: number
   averageScore: number
   carbonSaved: number
+  totalEnergySaved: number
+  averageCo2PerSubmission: number
 }
 
 interface RecentSubmission {
@@ -59,6 +62,8 @@ interface RecentSubmission {
 }
 
 const Dashboard: React.FC = () => {
+  const navigate = useNavigate()
+  const [userId, setUserId] = useState<number | null>(null)
   const [stats, setStats] = useState<DashboardStats>({
     totalSubmissions: 0,
     averageGreenScore: 0,
@@ -78,26 +83,92 @@ const Dashboard: React.FC = () => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true)
+        // Get user ID from token or API
+        let uid: number | null = null
+        try {
+          const meRes = await apiClient.get('/auth/me')
+          uid = meRes.data?.id
+          setUserId(uid)
+        } catch (e) {
+          console.error('Failed to get user ID:', e)
+        }
+
         // Summary
-        const summaryRes = await apiClient.get('/metrics/summary')
+        const summaryUrl = uid ? `/metrics/summary?user_id=${uid}` : '/metrics/summary'
+        const summaryRes = await apiClient.get(summaryUrl)
         const s = summaryRes.data || {}
+        
+        // Get streak info
+        let streakInfo = { current_streak: 0, longest_streak: 0 }
+        try {
+          const streakRes = await apiClient.get('/streaks/me')
+          streakInfo = streakRes.data || streakInfo
+        } catch (e) {
+          console.error('Failed to get streak info:', e)
+        }
+        
         setStats({
           totalSubmissions: s.total_submissions || 0,
           averageGreenScore: s.average_green_score || 0,
           carbonSaved: s.total_co2_saved || 0,
           energySaved: s.total_energy_saved || 0,
           badgesEarned: s.badges_earned || 0,
-          currentStreak: s.current_streak || 0,
+          currentStreak: streakInfo.current_streak || s.current_streak || 0,
           rank: 0,
         })
 
         // History
-        const historyRes = await apiClient.get('/metrics/history')
+        const historyRes = await apiClient.get(uid ? `/metrics/history?user_id=${uid}` : '/metrics/history')
         const points: Array<{date: string; greenScore: number}> = (historyRes.data?.points || []).map((p: any) => ({
           date: p.date,
           score: p.greenScore,
         }))
         setGreenScoreHistory(points)
+
+        // Language stats
+        try {
+          const langStatsRes = await apiClient.get(uid ? `/metrics/language-stats?user_id=${uid}` : '/metrics/language-stats')
+          const langStats = (langStatsRes.data?.language_stats || []).map((stat: any) => ({
+            language: stat.language,
+            submissions: stat.submissions,
+            averageScore: stat.average_green_score,
+            carbonSaved: stat.total_co2_saved,
+            totalEnergySaved: stat.total_energy_saved,
+            averageCo2PerSubmission: stat.average_co2_per_submission
+          }))
+          setLanguageStats(langStats)
+        } catch (e) {
+          console.error('Failed to get language stats:', e)
+        }
+
+        // Carbon timeline
+        try {
+          const carbonRes = await apiClient.get(uid ? `/metrics/carbon-timeline?user_id=${uid}&days=30` : '/metrics/carbon-timeline?days=30')
+          // Could use this for carbon timeline chart
+        } catch (e) {
+          console.error('Failed to get carbon timeline:', e)
+        }
+
+        // Recent submissions (persisted)
+        if (uid) {
+          try {
+            const recentRes = await apiClient.get(`/submissions/user/${uid}/history`, { params: { limit: 5 } })
+            const items = recentRes.data?.items || []
+            const mapped: RecentSubmission[] = items.map((s: any) => ({
+              id: String(s.id),
+              filename: s.filename || 'snippet',
+              language: s.language || 'unknown',
+              greenScore: s.green_score || 0,
+              carbonSaved: (s.co2_emissions_g || 0) / 1000, // show kg
+              timestamp: s.created_at || new Date().toISOString(),
+            }))
+            setRecentSubmissions(mapped)
+          } catch (e) {
+            console.error('Failed to get recent submissions:', e)
+          }
+        } else {
+          setRecentSubmissions([])
+        }
       } catch (error) {
         console.error('Error fetching dashboard data:', error)
       } finally {
@@ -122,7 +193,7 @@ const Dashboard: React.FC = () => {
   }
 
   const languageChartData = {
-    labels: languageStats.map(item => item.language),
+    labels: languageStats.map(item => item.language.toUpperCase()),
     datasets: [
       {
         label: 'Average Green Score',
@@ -132,15 +203,45 @@ const Dashboard: React.FC = () => {
           'rgba(59, 130, 246, 0.8)',
           'rgba(168, 85, 247, 0.8)',
           'rgba(245, 158, 11, 0.8)',
-          'rgba(239, 68, 68, 0.8)'
+          'rgba(239, 68, 68, 0.8)',
+          'rgba(236, 72, 153, 0.8)',
+          'rgba(14, 165, 233, 0.8)'
         ],
         borderColor: [
           'rgb(34, 197, 94)',
           'rgb(59, 130, 246)',
           'rgb(168, 85, 247)',
           'rgb(245, 158, 11)',
-          'rgb(239, 68, 68)'
+          'rgb(239, 68, 68)',
+          'rgb(236, 72, 153)',
+          'rgb(14, 165, 233)'
         ],
+        borderWidth: 2
+      }
+    ]
+  }
+
+  const carbonChartData = {
+    labels: languageStats.map(item => item.language.toUpperCase()),
+    datasets: [
+      {
+        label: 'CO₂ Saved (g)',
+        data: languageStats.map(item => item.carbonSaved),
+        backgroundColor: 'rgba(34, 197, 94, 0.8)',
+        borderColor: 'rgb(34, 197, 94)',
+        borderWidth: 2
+      }
+    ]
+  }
+
+  const energyChartData = {
+    labels: languageStats.map(item => item.language.toUpperCase()),
+    datasets: [
+      {
+        label: 'Energy Saved (Wh)',
+        data: languageStats.map(item => item.totalEnergySaved),
+        backgroundColor: 'rgba(59, 130, 246, 0.8)',
+        borderColor: 'rgb(59, 130, 246)',
         borderWidth: 2
       }
     ]
@@ -235,7 +336,7 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500">
           <div className="flex items-center">
             <div className="p-2 bg-green-100 rounded-lg">
@@ -291,6 +392,20 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
         </div>
+
+        <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-orange-500">
+          <div className="flex items-center">
+            <div className="p-2 bg-orange-100 rounded-lg">
+              <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Current Streak</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.currentStreak} days 🔥</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Charts Section */}
@@ -302,6 +417,81 @@ const Dashboard: React.FC = () => {
           <Bar data={languageChartData} options={barChartOptions} />
         </div>
       </div>
+
+      {/* Language Efficiency Charts */}
+      {languageStats.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h3 className="text-lg font-semibold mb-4">Carbon Emissions by Language</h3>
+            <Bar data={carbonChartData} options={{
+              ...barChartOptions,
+              plugins: {
+                ...barChartOptions.plugins,
+                title: {
+                  display: false
+                }
+              }
+            }} />
+          </div>
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h3 className="text-lg font-semibold mb-4">Energy Consumption by Language</h3>
+            <Bar data={energyChartData} options={{
+              ...barChartOptions,
+              plugins: {
+                ...barChartOptions.plugins,
+                title: {
+                  display: false
+                }
+              }
+            }} />
+          </div>
+        </div>
+      )}
+
+      {/* Language Stats Table */}
+      {languageStats.length > 0 && (
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold mb-4">Language Performance Statistics</h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Language</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submissions</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Green Score</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CO₂ Saved (g)</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Energy Saved (Wh)</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg CO₂/Submission</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {languageStats.map((stat, index) => (
+                  <tr key={index} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                        {stat.language.toUpperCase()}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{stat.submissions}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                        stat.averageScore >= 80 ? 'bg-green-100 text-green-800' :
+                        stat.averageScore >= 60 ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {stat.averageScore.toFixed(1)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{stat.carbonSaved.toFixed(3)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{stat.totalEnergySaved.toFixed(4)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{stat.averageCo2PerSubmission.toFixed(3)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Carbon Impact and Recent Submissions */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -352,7 +542,10 @@ const Dashboard: React.FC = () => {
       <div className="bg-white rounded-lg shadow-md p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button className="flex items-center justify-center p-4 bg-green-50 hover:bg-green-100 rounded-lg border-2 border-dashed border-green-300 transition-colors">
+          <button
+            onClick={() => navigate('/submit')}
+            className="flex items-center justify-center p-4 bg-green-50 hover:bg-green-100 rounded-lg border-2 border-dashed border-green-300 transition-colors"
+          >
             <div className="text-center">
               <svg className="w-8 h-8 text-green-600 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -362,17 +555,39 @@ const Dashboard: React.FC = () => {
             </div>
           </button>
           
-          <button className="flex items-center justify-center p-4 bg-blue-50 hover:bg-blue-100 rounded-lg border-2 border-dashed border-blue-300 transition-colors">
+          <button
+            onClick={async () => {
+              try {
+                const response = await apiClient.get('/reports/metrics/csv', {
+                  responseType: 'blob'
+                })
+                const url = window.URL.createObjectURL(new Blob([response.data]))
+                const link = document.createElement('a')
+                link.href = url
+                link.setAttribute('download', `green-coding-metrics-${new Date().toISOString().split('T')[0]}.csv`)
+                document.body.appendChild(link)
+                link.click()
+                link.remove()
+              } catch (error) {
+                console.error('Error downloading report:', error)
+                alert('Failed to download report')
+              }
+            }}
+            className="flex items-center justify-center p-4 bg-blue-50 hover:bg-blue-100 rounded-lg border-2 border-dashed border-blue-300 transition-colors cursor-pointer"
+          >
             <div className="text-center">
               <svg className="w-8 h-8 text-blue-600 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
-              <p className="font-medium text-blue-800">View Reports</p>
-              <p className="text-sm text-blue-600">Download analytics</p>
+              <p className="font-medium text-blue-800">Download Reports</p>
+              <p className="text-sm text-blue-600">CSV & PDF</p>
             </div>
           </button>
           
-          <button className="flex items-center justify-center p-4 bg-purple-50 hover:bg-purple-100 rounded-lg border-2 border-dashed border-purple-300 transition-colors">
+          <button
+            onClick={() => navigate('/chatbot')}
+            className="flex items-center justify-center p-4 bg-purple-50 hover:bg-purple-100 rounded-lg border-2 border-dashed border-purple-300 transition-colors"
+          >
             <div className="text-center">
               <svg className="w-8 h-8 text-purple-600 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />

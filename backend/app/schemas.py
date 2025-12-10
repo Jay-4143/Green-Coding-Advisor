@@ -39,6 +39,17 @@ class UserResponse(UserBase):
         from_attributes = True
 
 
+# User type for type hints (matches MongoDB user document structure)
+class User(UserBase):
+    id: int
+    is_active: bool = True
+    is_verified: bool = False
+    created_at: Optional[datetime] = None
+    
+    class Config:
+        from_attributes = True
+
+
 # Authentication Schemas
 class Token(BaseModel):
     access_token: str
@@ -100,7 +111,6 @@ class TeamResponse(TeamBase):
     id: int
     created_by: int
     created_at: datetime
-    members: List[Dict[str, Any]] = []
     
     class Config:
         from_attributes = True
@@ -150,6 +160,7 @@ class BadgeResponse(BadgeBase):
 class CodeAnalysisRequest(BaseModel):
     code: str
     language: str
+    region: Optional[str] = "usa"  # Region for CO2 calculation
     filename: Optional[str] = None
 
 

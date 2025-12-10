@@ -1,15 +1,14 @@
 from datetime import datetime, timedelta
-from typing import Optional
-from jose import JWTError, jwt
-from passlib.context import CryptContext
+from typing import Optional, Dict, Any
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.orm import Session
+from jose import JWTError, jwt
+from passlib.context import CryptContext
 
 from .config import settings
-from .database import get_db
-from .models import User
-from .schemas import TokenData
+from .mongo import get_mongo_db
+from .schemas import TokenData, User
 
 # Password hashing - using pbkdf2_sha256 instead of bcrypt to avoid 72-byte limit
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
@@ -63,35 +62,40 @@ def verify_token(token: str, credentials_exception):
     return token_data
 
 
-def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
-    """Authenticate user with email and password"""
-    user = db.query(User).filter(User.email == email).first()
+async def authenticate_user(db, email: str, password: str) -> Optional[Dict[str, Any]]:
+    """Authenticate user with email and password (MongoDB)"""
+    user = await db["users"].find_one({"email": email})
     if not user:
         return None
-    if not verify_password(password, user.hashed_password):
+    if not verify_password(password, user.get("hashed_password", "")):
         return None
     return user
 
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: Session = Depends(get_db)
+    db=Depends(get_mongo_db),
 ) -> User:
-    """Get current authenticated user"""
+    """Get current authenticated user from MongoDB"""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    
     token_data = verify_token(credentials.credentials, credentials_exception)
-    user = db.query(User).filter(User.username == token_data.username).first()
-    if user is None:
+    user_doc = await db["users"].find_one({"username": token_data.username})
+    if not user_doc:
         raise credentials_exception
-    return user
+    
+    # Convert MongoDB document to User Pydantic model
+    user_doc.pop("_id", None)  # Remove MongoDB _id
+    user_doc.pop("hashed_password", None)  # Remove password from response
+    return User(**user_doc)
 
 
-async def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
+async def get_current_active_user(
+    current_user: User = Depends(get_current_user),
+) -> User:
     """Get current active user"""
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
@@ -99,9 +103,11 @@ async def get_current_active_user(current_user: User = Depends(get_current_user)
 
 
 def require_role(required_role: str):
-    """Decorator to require specific user role"""
+    """Dependency factory to require specific user role"""
+
     def role_checker(current_user: User = Depends(get_current_active_user)):
-        if current_user.role.value != required_role and current_user.role.value != "admin":
+        role_value = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
+        if role_value != required_role and role_value != "admin":
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not enough permissions"

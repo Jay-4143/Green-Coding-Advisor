@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Green Coding Advisor</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>Green Advisor</h1>
+    <p>Analyze snippets for energy & CO2 impact</p>
+  </header>
+
+  <form id="analyze-form">
+    <label for="language">Language</label>
+    <select id="language" name="language" required>
+      <option value="python">Python</option>
+      <option value="javascript">JavaScript</option>
+      <option value="typescript">TypeScript</option>
+      <option value="java">Java</option>
+      <option value="go">Go</option>
+      <option value="cpp">C++</option>
+    </select>
+
+    <label for="code">Code Snippet</label>
+    <textarea id="code" name="code" rows="6" placeholder="Paste code to analyze" required></textarea>
+
+    <label for="backend">Backend URL</label>
+    <input
+      id="backend"
+      name="backend"
+      type="url"
+      placeholder="http://127.0.0.1:8000"
+      value="http://127.0.0.1:8000"
+      required
+    />
+
+    <label for="token">API Token (optional)</label>
+    <input
+      id="token"
+      name="token"
+      type="password"
+      placeholder="Bearer token if auth is enabled"
+    />
+
+    <button type="submit">Analyze</button>
+  </form>
+
+  <section id="result" hidden>
+    <h2>Result</h2>
+    <pre id="result-json"></pre>
+  </section>
+
+  <section id="error" hidden class="error"></section>
+
+  <footer>
+    <small>Uses /advisor/analyze endpoint</small>
+  </footer>
+
+  <script src="popup.js" type="module"></script>
+</body>
+</html>
+
