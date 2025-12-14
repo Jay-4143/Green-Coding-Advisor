@@ -12,7 +12,7 @@
 - ✅ Database models (User, Submission, Badge, Team, Project, CodeAnalysis)
 - ✅ Authentication system with JWT tokens
 - ✅ User signup and login endpoints
-- ✅ Role-based access control (Student, Developer, Admin)
+- ✅ Role-based access control (Developer, Admin)
 - ✅ Email verification system
 - ✅ Password reset functionality
 - ✅ API routing and middleware

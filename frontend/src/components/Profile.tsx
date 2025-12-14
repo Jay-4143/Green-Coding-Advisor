@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import apiClient from '../api/client'
+import apiClient, { clearTokens } from '../api/client'
 
 interface UserProfile {
   id: number
@@ -225,6 +225,22 @@ const Profile: React.FC = () => {
                   Change Password
                 </button>
               </form>
+            </div>
+
+            {/* Logout Section - Centered at bottom */}
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+              <div className="flex justify-center">
+                <button
+                  onClick={() => {
+                    clearTokens()
+                    navigate('/')
+                    window.location.reload()
+                  }}
+                  className="px-8 py-3 bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600 text-white rounded-lg font-semibold transition-colors shadow-lg hover:shadow-xl"
+                >
+                  Logout
+                </button>
+              </div>
             </div>
           </div>
         </div>

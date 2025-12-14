@@ -13,7 +13,7 @@ from contextlib import asynccontextmanager
 from .config import settings
 from .logger import green_logger
 from .mongo import get_mongo_db
-from .routers import auth, submissions, metrics, advisor, chatbot, projects, teams, badges, reports, streaks
+from .routers import auth, submissions, metrics, advisor, chatbot, projects, teams, badges, reports, streaks, admin
 from .badge_service import badge_service
 from .security import security_middleware
 
@@ -139,7 +139,8 @@ def create_app() -> FastAPI:
     app.include_router(teams.router, prefix="/teams", tags=["Team Collaboration"])
     app.include_router(badges.router, prefix="/badges", tags=["Badges & Achievements"])
     app.include_router(reports.router, prefix="/reports", tags=["Reports"])
-    app.include_router(streaks.router, prefix="/streaks", tags=["Streaks"]) 
+    app.include_router(streaks.router, prefix="/streaks", tags=["Streaks"])
+    app.include_router(admin.router, prefix="/admin", tags=["Admin"]) 
 
     @app.get("/health", tags=["Health"])
     async def health():

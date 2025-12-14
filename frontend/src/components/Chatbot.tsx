@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import apiClient from '../api/client'
+import {
+  FadeInUp,
+} from './animations'
 
 interface Message {
   id: number
@@ -87,25 +91,32 @@ const Chatbot: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg p-6 text-white">
-        <h1 className="text-3xl font-bold mb-2">AI Chatbot - Green Coding Advisor</h1>
-        <p className="text-green-100">
-          Ask me anything about sustainable coding practices, optimization, and green coding
-        </p>
-      </div>
+      <FadeInUp>
+        <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg p-6 text-white">
+          <h1 className="text-3xl font-bold mb-2">AI Chatbot - Green Coding Advisor</h1>
+          <p className="text-green-100">
+            Ask me anything about sustainable coding practices, optimization, and green coding
+          </p>
+        </div>
+      </FadeInUp>
 
       <div className="bg-white rounded-lg shadow-md h-[600px] flex flex-col">
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
+          <AnimatePresence>
+            {messages.map((message) => (
+              <motion.div
+                key={message.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+                className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
               <div
                 className={`max-w-[70%] rounded-lg p-4 ${
                   message.type === 'user'
-                    ? 'bg-green-600 text-white'
-                    : 'bg-gray-100 text-gray-900'
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-gray-100 dark:bg-slate-700 text-gray-900 dark:text-white'
                 }`}
               >
                 <div className="whitespace-pre-wrap">{message.content}</div>
@@ -118,8 +129,8 @@ const Chatbot: React.FC = () => {
                         onClick={() => handleSuggestionClick(suggestion)}
                         className={`block text-sm p-2 rounded ${
                           message.type === 'user'
-                            ? 'bg-green-700 hover:bg-green-800'
-                            : 'bg-white hover:bg-gray-200 text-gray-700'
+                            ? 'bg-emerald-700 hover:bg-emerald-800'
+                            : 'bg-white dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-gray-300'
                         }`}
                       >
                         {suggestion}
@@ -134,8 +145,8 @@ const Chatbot: React.FC = () => {
                         key={index}
                         className={`text-xs px-2 py-1 rounded ${
                           message.type === 'user'
-                            ? 'bg-green-700'
-                            : 'bg-gray-200 text-gray-600'
+                            ? 'bg-emerald-700'
+                            : 'bg-gray-200 dark:bg-slate-600 text-gray-600 dark:text-gray-300'
                         }`}
                       >
                         {topic.replace('_', ' ')}
@@ -144,15 +155,16 @@ const Chatbot: React.FC = () => {
                   </div>
                 )}
               </div>
-            </div>
-          ))}
+              </motion.div>
+            ))}
+          </AnimatePresence>
           {loading && (
             <div className="flex justify-start">
-              <div className="bg-gray-100 rounded-lg p-4">
+              <div className="bg-gray-100 dark:bg-slate-700 rounded-lg p-4">
                 <div className="flex space-x-2">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                  <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
                 </div>
               </div>
             </div>
@@ -160,29 +172,31 @@ const Chatbot: React.FC = () => {
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="border-t p-4">
+        <div className="border-t border-gray-200 dark:border-slate-700 p-4">
           <form onSubmit={handleSendMessage} className="flex space-x-2">
             <input
               type="text"
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               placeholder="Ask a question about green coding..."
-              className="flex-1 border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="flex-1 border border-gray-300 dark:border-gray-600 rounded-md px-4 py-2 bg-white dark:bg-slate-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               disabled={loading}
             />
-            <button
+            <motion.button
               type="submit"
               disabled={loading || !inputMessage.trim()}
-              className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.98 }}
+              className="px-6 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Send
-            </button>
+            </motion.button>
           </form>
         </div>
       </div>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <p className="text-sm text-blue-800">
+      <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+        <p className="text-sm text-blue-800 dark:text-blue-300">
           💡 <strong>Tip:</strong> Ask me about loop optimization, data structures, memory usage, algorithm complexity, or any green coding practices!
         </p>
       </div>

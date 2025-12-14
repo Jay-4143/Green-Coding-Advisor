@@ -12,7 +12,7 @@ from ..schemas import (
     OptimizationSuggestion,
     CodeAnalysisRequest
 )
-from ..auth import get_current_active_user
+from ..auth import get_current_active_user, get_optional_user
 from ..schemas import User
 from ..ml_predictor import green_predictor
 from ..logger import green_logger
@@ -431,6 +431,143 @@ async def public_analyze_code(request: CodeAnalysisRequest):
     response_dict = response.dict()
     response_dict["real_world_impact"] = real_world_impact
     return response_dict
+
+
+@router.post("/optimize")
+async def optimize_code(request: CodeAnalysisRequest):
+    """Generate fully optimized code (not just suggestions).
+    
+    This endpoint:
+    - Automatically detects the programming language
+    - Analyzes the code for inefficiencies
+    - Generates a FULL optimized version
+    - Returns both original and optimized code with comparison metrics
+    """
+    try:
+        # Validate and sanitize input
+        code = sanitize_code_content(request.code, max_length=1000000)
+        language = request.language if request.language else None
+        
+        # Generate optimized code
+        optimization_result = green_predictor.optimize_code(
+            code=code,
+            language=language,
+            region=request.region or "usa"
+        )
+        
+        return optimization_result
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Optimization failed: {str(e)}")
+
+
+@router.post("/optimize/report")
+async def generate_optimization_report(
+    request: CodeAnalysisRequest,
+    format: str = Query("pdf", regex="^(pdf|json|html)$"),
+    current_user: Optional[User] = Depends(get_optional_user)
+):
+    """Generate a comprehensive report from code optimization.
+    
+    This endpoint:
+    - Optimizes the code
+    - Generates a complete downloadable report
+    - Supports PDF, JSON, and HTML formats
+    """
+    try:
+        from fastapi.responses import Response, StreamingResponse
+        from ..report_generator import report_generator
+        
+        # Validate and sanitize input
+        code = sanitize_code_content(request.code, max_length=1000000)
+        language = request.language if request.language else None
+        
+        # Generate optimized code
+        optimization_result = green_predictor.optimize_code(
+            code=code,
+            language=language,
+            region=request.region or "usa"
+        )
+        
+        # Also analyze the original code for metrics
+        analysis_result = green_predictor.analyze_code(
+            code=code,
+            language=optimization_result.get("detected_language", language or "python"),
+            region=request.region or "usa"
+        )
+        
+        # Prepare submission data
+        submission_data = {
+            "id": 0,  # No submission ID for direct optimization
+            "filename": f"code.{optimization_result.get('detected_language', 'py')}",
+            "language": optimization_result.get("detected_language", language or "python"),
+            "code_content": code,
+            "green_score": analysis_result["metrics"]["green_score"],
+            "energy_consumption_wh": analysis_result["metrics"]["energy_consumption_wh"],
+            "co2_emissions_g": analysis_result["metrics"]["co2_emissions_g"],
+            "cpu_time_ms": analysis_result["metrics"]["cpu_time_ms"],
+            "memory_usage_mb": analysis_result["metrics"]["memory_usage_mb"],
+            "complexity_score": analysis_result["metrics"]["complexity_score"],
+            "suggestions": analysis_result.get("suggestions", []),
+            "real_world_impact": analysis_result.get("real_world_impact", {}),
+            "created_at": datetime.utcnow().isoformat()
+        }
+        
+        user_data = {
+            "username": current_user.username if current_user else "Guest",
+            "email": current_user.email if current_user else "guest@example.com"
+        } if current_user else None
+        
+        # Generate report based on format
+        if format == "pdf":
+            pdf_buffer = report_generator.generate_comprehensive_pdf_report(
+                submission_data,
+                optimization_result,
+                user_data,
+                None
+            )
+            return StreamingResponse(
+                pdf_buffer,
+                media_type="application/pdf",
+                headers={
+                    "Content-Disposition": f"attachment; filename=green-coding-optimization-report-{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
+                }
+            )
+        elif format == "json":
+            json_report = report_generator.generate_json_report(
+                submission_data,
+                optimization_result,
+                user_data,
+                None
+            )
+            return Response(
+                content=json_report,
+                media_type="application/json",
+                headers={
+                    "Content-Disposition": f"attachment; filename=green-coding-optimization-report-{datetime.now().strftime('%Y%m%d%H%M%S')}.json"
+                }
+            )
+        elif format == "html":
+            html_report = report_generator.generate_html_report(
+                submission_data,
+                optimization_result,
+                user_data,
+                None
+            )
+            return Response(
+                content=html_report,
+                media_type="text/html",
+                headers={
+                    "Content-Disposition": f"attachment; filename=green-coding-optimization-report-{datetime.now().strftime('%Y%m%d%H%M%S')}.html"
+                }
+            )
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Report generation failed: {str(e)}")
 
 
 async def analyze_code_background(submission_id: int, code: str, language: str):

@@ -7,11 +7,11 @@ const Settings: React.FC = () => {
   const [message] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-slate-50 dark:bg-slate-900 min-h-screen">
       <div className="space-y-6">
-        <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg p-6 text-white">
+        <div className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-lg p-6 text-white shadow-lg">
           <h1 className="text-3xl font-bold mb-2">Settings</h1>
-          <p className="text-green-100">
+          <p className="text-emerald-100">
             Manage your preferences and account settings
           </p>
         </div>
@@ -28,8 +28,8 @@ const Settings: React.FC = () => {
           </div>
         )}
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md">
-          <div className="border-b border-gray-200 dark:border-gray-700">
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md">
+          <div className="border-b border-gray-200 dark:border-slate-700">
             <nav className="flex space-x-4 px-6">
               <button
                 onClick={() => setActiveTab('preferences')}

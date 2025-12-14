@@ -30,6 +30,14 @@ interface SubmissionResult {
     }
     severity: 'low' | 'medium' | 'high'
   }>
+  // New fields for full optimization
+  optimizedCode?: string
+  originalCode?: string
+  comparisonTable?: any
+  improvementsExplanation?: string
+  expectedGreenScoreImprovement?: string
+  detectedLanguage?: string
+  analysisSummary?: string
 }
 
 function looksLikeLanguage(code: string, language: string): boolean {
@@ -329,36 +337,61 @@ const CodeSubmission: React.FC = () => {
     setResult(null)
 
     try {
+      // First, try to get fully optimized code
+      let optimizeData: any = null
+      try {
+        const optimizeResponse = await apiClient.post('/submissions/optimize', {
+          code: code.trim(),
+          language: language || undefined,
+          region: 'usa'
+        })
+        optimizeData = optimizeResponse.data
+      } catch (optimizeError) {
+        // If optimization fails, we'll fall back to regular analysis
+        console.warn('Optimization endpoint failed, falling back to analysis:', optimizeError)
+      }
+
       // Create submission so it is persisted for dashboard/metrics
       const createRes = await apiClient.post('/submissions', {
         code_content: code.trim(),
-        language,
-        filename: filename || `code.${language === 'javascript' ? 'js' : language}`,
+        language: optimizeData.detected_language || language,
+        filename: filename || `code.${(optimizeData.detected_language || language) === 'javascript' ? 'js' : (optimizeData.detected_language || language)}`,
       })
       const submissionId = createRes.data?.id
       if (!submissionId) {
         throw new Error('Submission failed')
       }
 
-      // Analyze and persist metrics
-      const response = await apiClient.post(`/submissions/${submissionId}/analyze`)
-      const data = response.data
+      // Analyze and persist metrics (for dashboard tracking)
+      const analyzeResponse = await apiClient.post(`/submissions/${submissionId}/analyze`)
+      const analyzeData = analyzeResponse.data
+
+      // Use optimized code metrics if available, otherwise fall back to analysis
+      const metrics = optimizeData?.comparison_table ? {
+        green_score: optimizeData.comparison_table.green_score?.optimized || analyzeData.green_score,
+        energy_consumption_wh: parseFloat(optimizeData.comparison_table.energy_usage?.optimized?.replace(' Wh', '') || String(analyzeData.energy_consumption_wh)),
+        co2_emissions_g: parseFloat(optimizeData.comparison_table.co2_emissions?.optimized?.replace(' g', '') || String(analyzeData.co2_emissions_g)),
+        cpu_time_ms: parseFloat(optimizeData.comparison_table.cpu_time?.optimized?.replace(' ms', '') || String(analyzeData.cpu_time_ms)),
+        memory_usage_mb: parseFloat(optimizeData.comparison_table.memory_usage?.optimized?.replace(' MB', '') || String(analyzeData.memory_usage_mb)),
+      } : analyzeData
 
       const normalized: SubmissionResult = {
         id: String(submissionId),
-            greenScore: data.green_score,
-            energyConsumption: data.energy_consumption_wh,
-            co2Emissions: data.co2_emissions_g,
-            memoryUsage: data.memory_usage_mb,
-            cpuTime: data.cpu_time_ms,
-            suggestions: Array.isArray(data.suggestions)
-              ? data.suggestions.map((s: any) => (typeof s === 'string' ? s : s.explanation || s.finding || ''))
-              : [],
-            language,
-            filename: filename || `code.${language === 'javascript' ? 'js' : language}`,
-        realWorldImpact: data.real_world_impact || data.analysis_details?.real_world_impact || undefined,
-            codeSuggestions: Array.isArray(data.suggestions)
-          ? data.suggestions
+        greenScore: metrics.green_score,
+        energyConsumption: metrics.energy_consumption_wh,
+        co2Emissions: metrics.co2_emissions_g,
+        memoryUsage: metrics.memory_usage_mb,
+        cpuTime: metrics.cpu_time_ms,
+        suggestions: optimizeData?.improvements_explanation 
+          ? optimizeData.improvements_explanation.split('\n').filter((s: string) => s.trim())
+          : Array.isArray(analyzeData.suggestions)
+            ? analyzeData.suggestions.map((s: any) => (typeof s === 'string' ? s : s.explanation || s.finding || ''))
+            : [],
+        language: optimizeData?.detected_language || language,
+        filename: filename || `code.${(optimizeData?.detected_language || language) === 'javascript' ? 'js' : (optimizeData?.detected_language || language)}`,
+        realWorldImpact: analyzeData.real_world_impact || analyzeData.analysis_details?.real_world_impact || undefined,
+        codeSuggestions: Array.isArray(analyzeData.suggestions)
+          ? analyzeData.suggestions
               .filter((s: any) => typeof s === 'object' && s.before_code && s.after_code)
               .map((s: any) => ({
                 ...s,
@@ -366,8 +399,16 @@ const CodeSubmission: React.FC = () => {
                   ? (String(s.severity).toLowerCase() as 'low' | 'medium' | 'high')
                   : 'medium',
               }))
-              : []
-          }
+          : [],
+        // Full optimization data (only if optimization was successful)
+        optimizedCode: optimizeData?.optimized_code,
+        originalCode: optimizeData?.original_code,
+        comparisonTable: optimizeData?.comparison_table,
+        improvementsExplanation: optimizeData?.improvements_explanation,
+        expectedGreenScoreImprovement: optimizeData?.expected_green_score_improvement,
+        detectedLanguage: optimizeData?.detected_language,
+        analysisSummary: optimizeData?.analysis_summary
+      }
 
       setResult(normalized)
       try {
@@ -439,20 +480,20 @@ const CodeSubmission: React.FC = () => {
   }, [result])
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Submit Code for Analysis</h2>
+    <div className="space-y-6 bg-slate-50 dark:bg-slate-900 min-h-screen p-4 sm:p-6">
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Submit Code for Analysis</h2>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Programming Language
               </label>
               <select
                 value={language}
                 onChange={(e) => setLanguage(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
                 {languages.map((lang) => (
                   <option key={lang.value} value={lang.value}>
@@ -463,7 +504,7 @@ const CodeSubmission: React.FC = () => {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Filename (optional)
               </label>
               <input
@@ -471,13 +512,13 @@ const CodeSubmission: React.FC = () => {
                 value={filename}
                 onChange={(e) => setFilename(e.target.value)}
                 placeholder="e.g., algorithm.py"
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-slate-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Code
             </label>
             <textarea
@@ -485,7 +526,7 @@ const CodeSubmission: React.FC = () => {
               onChange={(e) => setCode(e.target.value)}
               placeholder="Paste your code here..."
               rows={15}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 font-mono text-sm"
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-slate-900 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono text-sm"
             />
           </div>
 
@@ -500,7 +541,7 @@ const CodeSubmission: React.FC = () => {
               />
               <label
                 htmlFor="file-upload"
-                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer"
+                className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 cursor-pointer"
               >
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -535,13 +576,13 @@ const CodeSubmission: React.FC = () => {
         </form>
 
         {error && (
-          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
+          <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
             <div className="flex">
               <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <div className="ml-3">
-                <p className="text-sm text-red-800">{error}</p>
+                <p className="text-sm text-red-800 dark:text-red-300">{error}</p>
               </div>
             </div>
           </div>
@@ -549,18 +590,22 @@ const CodeSubmission: React.FC = () => {
       </div>
 
       {result && (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-xl font-bold text-gray-900 mb-4">Analysis Results</h3>
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Analysis Results</h3>
           
           {/* Green Score */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-2">
-              <h4 className="text-lg font-semibold text-gray-900">Green Score</h4>
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${getScoreColor(result.greenScore)}`}>
+              <h4 className="text-lg font-semibold text-gray-900 dark:text-white">Green Score</h4>
+              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                result.greenScore >= 80 ? 'text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30' :
+                result.greenScore >= 60 ? 'text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/30' :
+                'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30'
+              }`}>
                 {result.greenScore}/100 - {getScoreLabel(result.greenScore)}
               </span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-3">
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
               <div
                 className={`h-3 rounded-full ${
                   result.greenScore >= 80 ? 'bg-green-500' :
@@ -574,50 +619,50 @@ const CodeSubmission: React.FC = () => {
 
           {/* Metrics Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div className="bg-blue-50 rounded-lg p-4">
+            <div className="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
               <div className="flex items-center">
-                <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
                 <div className="ml-3">
-                  <p className="text-sm font-medium text-blue-600">Energy</p>
-                  <p className="text-lg font-bold text-blue-900">{result.energyConsumption.toFixed(2)} Wh</p>
+                  <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Energy</p>
+                  <p className="text-lg font-bold text-blue-900 dark:text-blue-200">{result.energyConsumption.toFixed(2)} Wh</p>
                 </div>
               </div>
             </div>
 
-            <div className="bg-green-50 rounded-lg p-4">
+            <div className="bg-green-50 dark:bg-green-900/30 rounded-lg p-4 border border-green-200 dark:border-green-800">
               <div className="flex items-center">
-                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <div className="ml-3">
-                  <p className="text-sm font-medium text-green-600">CO₂</p>
-                  <p className="text-lg font-bold text-green-900">{result.co2Emissions.toFixed(3)} g</p>
+                  <p className="text-sm font-medium text-green-600 dark:text-green-400">CO₂</p>
+                  <p className="text-lg font-bold text-green-900 dark:text-green-200">{result.co2Emissions.toFixed(3)} g</p>
                 </div>
               </div>
             </div>
 
-            <div className="bg-purple-50 rounded-lg p-4">
+            <div className="bg-purple-50 dark:bg-purple-900/30 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
               <div className="flex items-center">
-                <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-8 h-8 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
                 </svg>
                 <div className="ml-3">
-                  <p className="text-sm font-medium text-purple-600">Memory</p>
-                  <p className="text-lg font-bold text-purple-900">{result.memoryUsage.toFixed(1)} MB</p>
+                  <p className="text-sm font-medium text-purple-600 dark:text-purple-400">Memory</p>
+                  <p className="text-lg font-bold text-purple-900 dark:text-purple-200">{result.memoryUsage.toFixed(1)} MB</p>
                 </div>
               </div>
             </div>
 
-            <div className="bg-orange-50 rounded-lg p-4">
+            <div className="bg-orange-50 dark:bg-orange-900/30 rounded-lg p-4 border border-orange-200 dark:border-orange-800">
               <div className="flex items-center">
-                <svg className="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-8 h-8 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <div className="ml-3">
-                  <p className="text-sm font-medium text-orange-600">CPU Time</p>
-                  <p className="text-lg font-bold text-orange-900">{result.cpuTime.toFixed(1)} ms</p>
+                  <p className="text-sm font-medium text-orange-600 dark:text-orange-400">CPU Time</p>
+                  <p className="text-lg font-bold text-orange-900 dark:text-orange-200">{result.cpuTime.toFixed(1)} ms</p>
                 </div>
               </div>
             </div>
@@ -626,20 +671,20 @@ const CodeSubmission: React.FC = () => {
           {/* Real-World Impact */}
           {result.realWorldImpact && (
             <div className="mb-6">
-              <h4 className="text-lg font-semibold text-gray-900 mb-3">Real-World Impact</h4>
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200">
-                <p className="text-sm text-gray-700 mb-3 font-medium">
+              <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Real-World Impact</h4>
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 rounded-lg p-4 border border-green-200 dark:border-green-800">
+                <p className="text-sm text-gray-700 dark:text-gray-200 mb-3 font-medium">
                   {result.realWorldImpact.description || 
                    `Running this code 1M times would:`}
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {result.realWorldImpact.light_bulb_hours && (
-                    <div className="bg-white rounded-lg p-3 border border-green-200">
+                    <div className="bg-white dark:bg-slate-800 rounded-lg p-3 border border-green-200 dark:border-green-800">
                       <div className="flex items-center space-x-2">
                         <span className="text-2xl">💡</span>
                         <div>
-                          <p className="text-xs text-gray-500">Light Bulb Hours</p>
-                          <p className="text-lg font-bold text-green-700">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Light Bulb Hours</p>
+                          <p className="text-lg font-bold text-green-700 dark:text-green-400">
                             {result.realWorldImpact.light_bulb_hours.toFixed(1)} hrs
                           </p>
                         </div>
@@ -647,12 +692,12 @@ const CodeSubmission: React.FC = () => {
                     </div>
                   )}
                   {result.realWorldImpact.tree_planting_days && (
-                    <div className="bg-white rounded-lg p-3 border border-green-200">
+                    <div className="bg-white dark:bg-slate-800 rounded-lg p-3 border border-green-200 dark:border-green-800">
                       <div className="flex items-center space-x-2">
                         <span className="text-2xl">🌳</span>
                         <div>
-                          <p className="text-xs text-gray-500">Tree Planting Days</p>
-                          <p className="text-lg font-bold text-green-700">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Tree Planting Days</p>
+                          <p className="text-lg font-bold text-green-700 dark:text-green-400">
                             {result.realWorldImpact.tree_planting_days.toFixed(1)} days
                           </p>
                         </div>
@@ -660,12 +705,12 @@ const CodeSubmission: React.FC = () => {
                     </div>
                   )}
                   {result.realWorldImpact.car_miles && (
-                    <div className="bg-white rounded-lg p-3 border border-green-200">
+                    <div className="bg-white dark:bg-slate-800 rounded-lg p-3 border border-green-200 dark:border-green-800">
                       <div className="flex items-center space-x-2">
                         <span className="text-2xl">🚗</span>
                         <div>
-                          <p className="text-xs text-gray-500">Car Miles</p>
-                          <p className="text-lg font-bold text-green-700">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Car Miles</p>
+                          <p className="text-lg font-bold text-green-700 dark:text-green-400">
                             {result.realWorldImpact.car_miles.toFixed(4)} miles
                           </p>
                         </div>
@@ -679,22 +724,22 @@ const CodeSubmission: React.FC = () => {
 
       {/* Optimization Summary */}
       {optimizationSummary && optimizationSummary.best && (
-        <div className="mb-6 bg-emerald-50 border border-emerald-200 rounded-lg p-4 flex flex-col md:flex-row md:items-center md:justify-between">
+        <div className="mb-6 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-lg p-4 flex flex-col md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-sm text-emerald-700 font-semibold">Top Optimization</p>
-            <p className="text-lg font-bold text-emerald-900">{optimizationSummary.best.finding}</p>
-            <p className="text-sm text-emerald-800 mt-1">
+            <p className="text-sm text-emerald-700 dark:text-emerald-300 font-semibold">Top Optimization</p>
+            <p className="text-lg font-bold text-emerald-900 dark:text-emerald-200">{optimizationSummary.best.finding}</p>
+            <p className="text-sm text-emerald-800 dark:text-emerald-300 mt-1">
               {optimizationSummary.best.explanation}
             </p>
           </div>
           <div className="mt-3 md:mt-0 flex items-center space-x-4">
             {typeof optimizationSummary.best.predicted_improvement?.green_score === 'number' && (
-              <div className="px-3 py-2 rounded-md bg-white border border-emerald-200 text-emerald-800 text-sm font-semibold">
+              <div className="px-3 py-2 rounded-md bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-sm font-semibold">
                 +{optimizationSummary.best.predicted_improvement.green_score} Green Score
               </div>
             )}
             {Math.abs(optimizationSummary.totalEnergySavedWh) > 0 && (
-              <div className="px-3 py-2 rounded-md bg-white border border-emerald-200 text-emerald-800 text-sm font-semibold">
+              <div className="px-3 py-2 rounded-md bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-sm font-semibold">
                 ~{Math.abs(optimizationSummary.totalEnergySavedWh * 1000).toFixed(1)} mWh saved/run
               </div>
             )}
@@ -702,18 +747,139 @@ const CodeSubmission: React.FC = () => {
         </div>
       )}
 
-      {/* Code Comparison Suggestions */}
-      {result.codeSuggestions && result.codeSuggestions.length > 0 ? (
+      {/* Full Optimized Code Section */}
+      {result.optimizedCode && result.originalCode ? (
+        <div className="mb-6">
+          <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Full Code Optimization</h4>
+          
+          {/* Analysis Summary */}
+          {result.analysisSummary && (
+            <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <p className="text-sm text-blue-900 dark:text-blue-200">{result.analysisSummary}</p>
+            </div>
+          )}
+
+          {/* Comparison Table */}
+          {result.comparisonTable && (
+            <div className="mb-6 overflow-x-auto">
+              <h5 className="text-md font-semibold text-gray-900 dark:text-white mb-3">Performance Comparison</h5>
+              <table className="min-w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                <thead>
+                  <tr className="bg-gray-50 dark:bg-slate-700">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-b border-gray-200 dark:border-gray-600">Metric</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-red-700 dark:text-red-300 uppercase tracking-wider border-b border-gray-200 dark:border-gray-600">Original</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-green-700 dark:text-green-300 uppercase tracking-wider border-b border-gray-200 dark:border-gray-600">Optimized</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-blue-700 dark:text-blue-300 uppercase tracking-wider border-b border-gray-200 dark:border-gray-600">Improvement</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {result.comparisonTable.green_score && (
+                    <tr>
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">Green Score</td>
+                      <td className="px-4 py-3 text-sm text-red-600 dark:text-red-400">{result.comparisonTable.green_score.original}</td>
+                      <td className="px-4 py-3 text-sm text-green-600 dark:text-green-400 font-semibold">{result.comparisonTable.green_score.optimized}</td>
+                      <td className="px-4 py-3 text-sm text-blue-600 dark:text-blue-400 font-semibold">+{result.comparisonTable.green_score.improvement}</td>
+                    </tr>
+                  )}
+                  {result.comparisonTable.energy_usage && (
+                    <tr>
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">Energy Usage</td>
+                      <td className="px-4 py-3 text-sm text-red-600 dark:text-red-400">{result.comparisonTable.energy_usage.original}</td>
+                      <td className="px-4 py-3 text-sm text-green-600 dark:text-green-400 font-semibold">{result.comparisonTable.energy_usage.optimized}</td>
+                      <td className="px-4 py-3 text-sm text-blue-600 dark:text-blue-400">{result.comparisonTable.energy_usage.improvement}</td>
+                    </tr>
+                  )}
+                  {result.comparisonTable.co2_emissions && (
+                    <tr>
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">CO₂ Emissions</td>
+                      <td className="px-4 py-3 text-sm text-red-600 dark:text-red-400">{result.comparisonTable.co2_emissions.original}</td>
+                      <td className="px-4 py-3 text-sm text-green-600 dark:text-green-400 font-semibold">{result.comparisonTable.co2_emissions.optimized}</td>
+                      <td className="px-4 py-3 text-sm text-blue-600 dark:text-blue-400">{result.comparisonTable.co2_emissions.improvement}</td>
+                    </tr>
+                  )}
+                  {result.comparisonTable.cpu_time && (
+                    <tr>
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">CPU Time</td>
+                      <td className="px-4 py-3 text-sm text-red-600 dark:text-red-400">{result.comparisonTable.cpu_time.original}</td>
+                      <td className="px-4 py-3 text-sm text-green-600 dark:text-green-400 font-semibold">{result.comparisonTable.cpu_time.optimized}</td>
+                      <td className="px-4 py-3 text-sm text-blue-600 dark:text-blue-400">{result.comparisonTable.cpu_time.improvement}</td>
+                    </tr>
+                  )}
+                  {result.comparisonTable.memory_usage && (
+                    <tr>
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">Memory Usage</td>
+                      <td className="px-4 py-3 text-sm text-red-600 dark:text-red-400">{result.comparisonTable.memory_usage.original}</td>
+                      <td className="px-4 py-3 text-sm text-green-600 dark:text-green-400 font-semibold">{result.comparisonTable.memory_usage.optimized}</td>
+                      <td className="px-4 py-3 text-sm text-blue-600 dark:text-blue-400">{result.comparisonTable.memory_usage.improvement}</td>
+                    </tr>
+                  )}
+                  {result.comparisonTable.time_complexity && (
+                    <tr>
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">Time Complexity</td>
+                      <td className="px-4 py-3 text-sm text-red-600 dark:text-red-400">{result.comparisonTable.time_complexity.original}</td>
+                      <td className="px-4 py-3 text-sm text-green-600 dark:text-green-400 font-semibold">{result.comparisonTable.time_complexity.optimized}</td>
+                      <td className="px-4 py-3 text-sm text-blue-600 dark:text-blue-400">{result.comparisonTable.time_complexity.improvement}</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Code Comparison - Side by Side */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h5 className="font-semibold text-red-700 dark:text-red-300 flex items-center space-x-2">
+                  <span>Original Code</span>
+                  <span className="text-xs bg-red-100 dark:bg-red-900/30 px-2 py-1 rounded">Inefficient</span>
+                </h5>
+              </div>
+              <pre className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-lg p-4 text-sm overflow-x-auto max-h-96">
+                <code className="text-red-900 dark:text-red-200 font-mono whitespace-pre-wrap">{result.originalCode}</code>
+              </pre>
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h5 className="font-semibold text-green-700 dark:text-green-300 flex items-center space-x-2">
+                  <span>Optimized Code</span>
+                  <span className="text-xs bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded">Optimized</span>
+                </h5>
+              </div>
+              <pre className="bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800 rounded-lg p-4 text-sm overflow-x-auto max-h-96">
+                <code className="text-green-900 dark:text-green-200 font-mono whitespace-pre-wrap">{result.optimizedCode}</code>
+              </pre>
+            </div>
+          </div>
+
+          {/* Improvements Explanation */}
+          {result.improvementsExplanation && (
+            <div className="mb-4 p-4 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-lg">
+              <h5 className="text-md font-semibold text-emerald-900 dark:text-emerald-200 mb-2">Improvements Applied</h5>
+              <div className="text-sm text-emerald-800 dark:text-emerald-300 whitespace-pre-line">
+                {result.improvementsExplanation}
+              </div>
+            </div>
+          )}
+
+          {/* Expected Improvement */}
+          {result.expectedGreenScoreImprovement && (
+            <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 border border-green-200 dark:border-green-800 rounded-lg">
+              <p className="text-sm font-semibold text-green-900 dark:text-green-200">
+                🎯 {result.expectedGreenScoreImprovement}
+              </p>
+            </div>
+          )}
+        </div>
+      ) : result.codeSuggestions && result.codeSuggestions.length > 0 ? (
         <div className="mb-6">
           <CodeComparison suggestions={result.codeSuggestions} />
         </div>
       ) : (
-        <div className="mb-6 bg-gray-50 border border-gray-200 rounded-lg p-4">
-          <h4 className="text-lg font-semibold text-gray-900 mb-2">Optimized Code</h4>
-          <p className="text-sm text-gray-700">
-            The analyzer did not return before/after code snippets for this submission.
-            When the AI provides code suggestions with <code className="px-1 bg-gray-100 rounded">before_code</code> and
-            <code className="px-1 bg-gray-100 rounded">after_code</code>, they will appear here for side-by-side comparison.
+        <div className="mb-6 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+          <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Optimized Code</h4>
+          <p className="text-sm text-gray-700 dark:text-gray-300">
+            The analyzer did not return optimized code for this submission.
           </p>
         </div>
       )}
@@ -721,16 +887,16 @@ const CodeSubmission: React.FC = () => {
           {/* Simple Text Suggestions */}
           {result.suggestions && result.suggestions.length > 0 && (
             <div>
-              <h4 className="text-lg font-semibold text-gray-900 mb-3">Additional Suggestions</h4>
+              <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Additional Suggestions</h4>
               <div className="space-y-2">
                 {result.suggestions
                   .filter((s: string) => typeof s === 'string')
                   .map((suggestion: string, index: number) => (
-                    <div key={index} className="flex items-start p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                      <svg className="w-5 h-5 text-yellow-600 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div key={index} className="flex items-start p-3 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                      <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                       </svg>
-                      <p className="text-sm text-yellow-800">{suggestion}</p>
+                      <p className="text-sm text-yellow-800 dark:text-yellow-300">{suggestion}</p>
                     </div>
                   ))}
               </div>

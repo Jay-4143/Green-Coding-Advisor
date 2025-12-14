@@ -3,9 +3,11 @@ import torch.nn as nn
 from transformers import AutoTokenizer, AutoModel
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_absolute_error, mean_squared_error
 import pandas as pd
 import numpy as np
 from typing import List, Dict, Tuple, Optional
+from collections import Counter
 import joblib
 import os
 from pathlib import Path
@@ -26,8 +28,11 @@ class GreenCodingModelTrainer:
         default_dataset_path = project_root / "dataset" / "code_dataset.csv"
         self.dataset_path = Path(dataset_path).expanduser() if dataset_path else default_dataset_path
         
+        # Cache for feature extraction to avoid recomputation
+        self._feature_cache = {}
+        
     def _load_dataset_samples(self) -> List[Dict]:
-        """Load samples from dataset/code_dataset.csv if it exists."""
+        """Load samples from dataset/code_dataset.csv if it exists - Optimized with vectorized operations."""
         
         path = Path(self.dataset_path)
         if not path.exists():
@@ -35,45 +40,38 @@ class GreenCodingModelTrainer:
             return []
         
         df = pd.read_csv(path)
-        samples: List[Dict] = []
         
-        for _, row in df.iterrows():
-            code = row.get("code")
-            if not isinstance(code, str) or not code.strip():
-                continue
-            
-            language = (row.get("language") or "python").strip()
-            metrics = {
-                "green_score": row.get("green_score"),
-                "energy_wh": row.get("energy_wh"),
-                "co2_g": row.get("co2_g"),
-                "cpu_time_ms": row.get("cpu_time_ms"),
-                "memory_mb": row.get("memory_mb"),
-                "complexity": row.get("complexity"),
-                "duration": row.get("duration"),
-                "emissions": row.get("emissions"),
-                "emissions_rate": row.get("emissions_rate"),
-                "energy_consumed": row.get("energy_consumed"),
-                "country_name": row.get("country_name"),
-                "region": row.get("region"),
-                "cloud_provider": row.get("cloud_provider"),
-                "cloud_region": row.get("cloud_region"),
-                "os": row.get("os"),
-                "cpu_model": row.get("cpu_model"),
-                "gpu_model": row.get("gpu_model"),
-                "ram_total_size": row.get("ram_total_size"),
-                "tracking_mode": row.get("tracking_mode"),
-                "on_cloud": row.get("on_cloud"),
-                "pue": row.get("pue"),
+        # Vectorized filtering: filter out invalid codes
+        valid_mask = df["code"].notna() & df["code"].astype(str).str.strip().astype(bool)
+        df_valid = df[valid_mask].copy()
+        
+        if len(df_valid) == 0:
+            return []
+        
+        # Vectorized language extraction with fallback
+        languages = df_valid["language"].fillna("python").astype(str).str.strip()
+        
+        # Prepare metrics columns in one go
+        metric_columns = [
+            "green_score", "energy_wh", "co2_g", "cpu_time_ms", "memory_mb",
+            "complexity", "duration", "emissions", "emissions_rate", "energy_consumed",
+            "country_name", "region", "cloud_provider", "cloud_region", "os",
+            "cpu_model", "gpu_model", "ram_total_size", "tracking_mode", "on_cloud", "pue"
+        ]
+        
+        # Build samples using vectorized operations
+        samples = [
+            {
+                "code": code,
+                "language": lang,
+                "metrics": {col: row.get(col) for col in metric_columns}
             }
-            
-            samples.append(
-                {
-                    "code": code,
-                    "language": language,
-                    "metrics": metrics,
-                }
+            for code, lang, row in zip(
+                df_valid["code"].astype(str),
+                languages,
+                df_valid[metric_columns].to_dict('records')
             )
+        ]
         
         print(f"📂 Loaded {len(samples)} rows from {path}")
         return samples
@@ -83,16 +81,10 @@ class GreenCodingModelTrainer:
         
         dataset_samples = self._load_dataset_samples()
         
-        # 1. Synthetic Code Dataset (augmentation/fallback)
+        # Combine all data sources efficiently
         synthetic_data = self._generate_synthetic_code_samples()
-        
-        # 2. Open Source Code Analysis
         open_source_data = self._collect_open_source_metrics()
-        
-        # 3. Performance Benchmarking Data
         benchmark_data = self._collect_benchmark_data()
-        
-        # 4. Code Quality Metrics
         quality_data = self._collect_quality_metrics()
         
         combined = dataset_samples + synthetic_data + open_source_data + benchmark_data + quality_data
@@ -100,12 +92,10 @@ class GreenCodingModelTrainer:
         return combined
     
     def _generate_synthetic_code_samples(self) -> List[Dict]:
-        """Generate synthetic code samples with known efficiency metrics"""
+        """Generate synthetic code samples with known efficiency metrics - Optimized with vectorized generation."""
         
-        samples = []
-        
-        # Inefficient patterns with known metrics
-        inefficient_samples = [
+        # Pre-defined inefficient and efficient samples
+        base_samples = [
             {
                 "code": """
 def inefficient_sum(numbers):
@@ -141,23 +131,25 @@ def efficient_sum(numbers):
             }
         ]
         
-        # Generate more samples programmatically
-        for i in range(1000):
-            # Generate various code patterns
-            pattern_type = np.random.choice(["loop", "recursion", "comprehension", "builtin"])
-            efficiency_level = np.random.choice(["inefficient", "moderate", "efficient"])
-            
-            code, metrics = self._generate_code_pattern(pattern_type, efficiency_level)
-            samples.append({
+        # Vectorized pattern generation
+        n_samples = 1000
+        pattern_types = np.random.choice(["loop", "recursion", "comprehension", "builtin"], size=n_samples)
+        efficiency_levels = np.random.choice(["inefficient", "moderate", "efficient"], size=n_samples)
+        
+        # Generate samples efficiently
+        generated_samples = []
+        for pattern_type, efficiency in zip(pattern_types, efficiency_levels):
+            code, metrics = self._generate_code_pattern(pattern_type, efficiency)
+            generated_samples.append({
                 "code": code,
                 "metrics": metrics,
                 "language": "python"
             })
         
-        return samples
+        return base_samples + generated_samples
     
     def _generate_code_pattern(self, pattern_type: str, efficiency: str) -> Tuple[str, Dict]:
-        """Generate specific code patterns with efficiency metrics"""
+        """Generate specific code patterns with efficiency metrics."""
         
         if pattern_type == "loop" and efficiency == "inefficient":
             code = """
@@ -212,15 +204,13 @@ def generic_handler(items):
         return code, metrics
     
     def _collect_open_source_metrics(self) -> List[Dict]:
-        """Collect metrics from open source repositories"""
+        """Collect metrics from open source repositories."""
         
-        # This would analyze real GitHub repositories
-        # For now, return sample data
         return [
             {
                 "code": "def fibonacci(n): return n if n <= 1 else fibonacci(n-1) + fibonacci(n-2)",
                 "metrics": {
-                    "green_score": 25,  # Very inefficient due to recursion
+                    "green_score": 25,
                     "energy_wh": 0.15,
                     "co2_g": 38.0,
                     "cpu_time_ms": 8.5,
@@ -232,188 +222,190 @@ def generic_handler(items):
         ]
     
     def _collect_benchmark_data(self) -> List[Dict]:
-        """Collect performance benchmarking data"""
-        
-        # This would run actual benchmarks on code samples
-        # For now, return sample benchmark data
+        """Collect performance benchmarking data."""
         return []
     
     def _collect_quality_metrics(self) -> List[Dict]:
-        """Collect code quality metrics using static analysis"""
-        
-        # This would use tools like pylint, radon, etc.
+        """Collect code quality metrics using static analysis."""
         return []
     
-    def train_green_score_model(self, training_data: List[Dict]) -> RandomForestRegressor:
-        """Train the Green Score prediction model"""
+    def _train_model_generic(
+        self, 
+        training_data: List[Dict], 
+        target_key: str, 
+        model_name: str,
+        model_params: Optional[Dict] = None
+    ) -> RandomForestRegressor:
+        """Generic model training method to eliminate code duplication."""
         
-        # Extract features from code
-        features = []
-        targets = []
+        # Extract features and targets using list comprehension (vectorized)
+        # Cache features to avoid recomputation
+        feature_target_pairs = [
+            (
+                self._extract_code_features_cached(sample["code"], sample["language"]),
+                sample["metrics"].get(target_key, 0.0)
+            )
+            for sample in training_data
+            if target_key in sample["metrics"] and sample["metrics"][target_key] is not None
+        ]
         
-        for sample in training_data:
-            # Extract code features
-            code_features = self._extract_code_features(sample["code"], sample["language"])
-            features.append(code_features)
-            targets.append(sample["metrics"]["green_score"])
+        if not feature_target_pairs:
+            raise ValueError(f"No valid training data for {model_name}")
         
-        # Convert to numpy arrays
-        X = np.array(features)
-        y = np.array(targets)
+        # Unpack and convert to numpy arrays in one step
+        features, targets = zip(*feature_target_pairs)
+        X = np.array(features, dtype=np.float32)  # Use float32 for memory efficiency
+        y = np.array(targets, dtype=np.float32)
         
         # Split data
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=0.2, random_state=42
         )
         
-        # Train Random Forest model
-        model = RandomForestRegressor(
-            n_estimators=100,
-            max_depth=10,
-            random_state=42
-        )
+        # Train model with configurable parameters
+        default_params = {
+            "n_estimators": 100,
+            "max_depth": 10,
+            "random_state": 42,
+            "n_jobs": -1  # Use all CPU cores
+        }
+        if model_params:
+            default_params.update(model_params)
         
+        model = RandomForestRegressor(**default_params)
         model.fit(X_train, y_train)
         
         # Evaluate model
         train_score = model.score(X_train, y_train)
         test_score = model.score(X_test, y_test)
         
-        print(f"Green Score Model - Train R²: {train_score:.3f}, Test R²: {test_score:.3f}")
+        y_pred = model.predict(X_test)
+        mae = mean_absolute_error(y_test, y_pred)
+        rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+        
+        print(f"{model_name} - Train R²: {train_score:.3f}, Test R²: {test_score:.3f}, MAE: {mae:.3f}, RMSE: {rmse:.3f}")
         
         # Save model
         os.makedirs(self.models_dir, exist_ok=True)
-        joblib.dump(model, self.models_dir / "green_score_model.pkl")
+        joblib.dump(model, self.models_dir / f"{model_name.lower().replace(' ', '_')}_model.pkl")
         
         return model
     
+    def train_green_score_model(self, training_data: List[Dict]) -> RandomForestRegressor:
+        """Train the Green Score prediction model."""
+        return self._train_model_generic(
+            training_data, 
+            "green_score", 
+            "Green Score",
+            {"max_depth": 10}
+        )
+    
+    def train_energy_model(self, training_data: List[Dict]) -> RandomForestRegressor:
+        """Train energy consumption prediction model."""
+        return self._train_model_generic(
+            training_data, 
+            "energy_wh", 
+            "Energy"
+        )
+    
+    def train_co2_model(self, training_data: List[Dict]) -> RandomForestRegressor:
+        """Train CO2 emissions prediction model."""
+        return self._train_model_generic(
+            training_data, 
+            "co2_g", 
+            "CO2"
+        )
+    
+    def _extract_code_features_cached(self, code: str, language: str) -> List[float]:
+        """Extract features with caching to avoid recomputation."""
+        cache_key = (code, language)
+        if cache_key not in self._feature_cache:
+            self._feature_cache[cache_key] = self._extract_code_features(code, language)
+        return self._feature_cache[cache_key]
+    
     def _extract_code_features(self, code: str, language: str) -> List[float]:
-        """Extract numerical features from code"""
+        """Extract numerical features from code - Optimized with single-pass counting."""
         
-        features = []
+        # Pre-compile patterns for faster counting
+        patterns = {
+            'for': 'for ',
+            'while': 'while ',
+            'if': 'if ',
+            'def': 'def ',
+            'class': 'class ',
+            'range_len': 'range(len(',
+            'sum': 'sum(',
+            'map': 'map(',
+            'lambda': 'lambda ',
+            'import': 'import ',
+            'from': 'from '
+        }
         
-        # Basic metrics
-        features.append(len(code))  # Code length
-        features.append(code.count('\n'))  # Number of lines
-        features.append(code.count(' '))  # Number of spaces
-        features.append(code.count('\t'))  # Number of tabs
+        # Single-pass feature extraction
+        code_len = len(code)
+        newlines = code.count('\n')
+        spaces = code.count(' ')
+        tabs = code.count('\t')
         
-        # Complexity indicators
-        features.append(code.count('for '))  # For loops
-        features.append(code.count('while '))  # While loops
-        features.append(code.count('if '))  # If statements
-        features.append(code.count('def '))  # Function definitions
-        features.append(code.count('class '))  # Class definitions
+        # Count patterns efficiently
+        pattern_counts = {key: code.count(pattern) for key, pattern in patterns.items()}
         
-        # Efficiency indicators
-        features.append(code.count('range(len('))  # Index-based iteration
-        features.append(code.count('['))  # List comprehensions
-        features.append(code.count('sum('))  # Built-in functions
-        features.append(code.count('map('))  # Functional programming
-        features.append(code.count('lambda '))  # Lambda functions
+        # List/dict comprehension indicators (count brackets)
+        list_brackets = code.count('[')
         
-        # Memory usage indicators
-        features.append(code.count('import '))  # Imports
-        features.append(code.count('from '))  # From imports
+        # Build feature vector
+        features = [
+            code_len,
+            newlines,
+            spaces,
+            tabs,
+            pattern_counts['for'],
+            pattern_counts['while'],
+            pattern_counts['if'],
+            pattern_counts['def'],
+            pattern_counts['class'],
+            pattern_counts['range_len'],
+            list_brackets,
+            pattern_counts['sum'],
+            pattern_counts['map'],
+            pattern_counts['lambda'],
+            pattern_counts['import'],
+            pattern_counts['from']
+        ]
         
-        # Add more sophisticated features using AST analysis
+        # Add AST features
         ast_features = self._extract_ast_features(code, language)
         features.extend(ast_features)
         
         return features
     
     def _extract_ast_features(self, code: str, language: str) -> List[float]:
-        """Extract features using Abstract Syntax Tree analysis"""
+        """Extract features using Abstract Syntax Tree analysis - Optimized with Counter."""
         
         try:
             if language == "python":
                 import ast
                 tree = ast.parse(code)
                 
-                features = []
+                # Use Counter for efficient counting
+                node_types = [type(node).__name__ for node in ast.walk(tree)]
+                node_counts = Counter(node_types)
                 
-                # Count different node types
-                node_counts = {}
-                for node in ast.walk(tree):
-                    node_type = type(node).__name__
-                    node_counts[node_type] = node_counts.get(node_type, 0) + 1
+                # Extract specific features in order
+                feature_names = [
+                    'For', 'While', 'If', 'FunctionDef', 'ClassDef',
+                    'ListComp', 'DictComp', 'SetComp'
+                ]
                 
-                # Extract specific features
-                features.append(node_counts.get('For', 0))
-                features.append(node_counts.get('While', 0))
-                features.append(node_counts.get('If', 0))
-                features.append(node_counts.get('FunctionDef', 0))
-                features.append(node_counts.get('ClassDef', 0))
-                features.append(node_counts.get('ListComp', 0))
-                features.append(node_counts.get('DictComp', 0))
-                features.append(node_counts.get('SetComp', 0))
-                
-                return features
+                return [node_counts.get(name, 0) for name in feature_names]
                 
         except SyntaxError:
-            # Return zeros if code is not valid
-            return [0] * 8
+            pass
         
         return [0] * 8
     
-    def train_energy_model(self, training_data: List[Dict]) -> RandomForestRegressor:
-        """Train energy consumption prediction model"""
-        
-        features = []
-        targets = []
-        
-        for sample in training_data:
-            code_features = self._extract_code_features(sample["code"], sample["language"])
-            features.append(code_features)
-            targets.append(sample["metrics"]["energy_wh"])
-        
-        X = np.array(features)
-        y = np.array(targets)
-        
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-        
-        model = RandomForestRegressor(n_estimators=100, random_state=42)
-        model.fit(X_train, y_train)
-        
-        train_score = model.score(X_train, y_train)
-        test_score = model.score(X_test, y_test)
-        
-        print(f"Energy Model - Train R²: {train_score:.3f}, Test R²: {test_score:.3f}")
-        
-        os.makedirs(self.models_dir, exist_ok=True)
-        joblib.dump(model, self.models_dir / "energy_model.pkl")
-        return model
-    
-    def train_co2_model(self, training_data: List[Dict]) -> RandomForestRegressor:
-        """Train CO2 emissions prediction model"""
-        
-        features = []
-        targets = []
-        
-        for sample in training_data:
-            code_features = self._extract_code_features(sample["code"], sample["language"])
-            features.append(code_features)
-            targets.append(sample["metrics"]["co2_g"])
-        
-        X = np.array(features)
-        y = np.array(targets)
-        
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-        
-        model = RandomForestRegressor(n_estimators=100, random_state=42)
-        model.fit(X_train, y_train)
-        
-        train_score = model.score(X_train, y_train)
-        test_score = model.score(X_test, y_test)
-        
-        print(f"CO2 Model - Train R²: {train_score:.3f}, Test R²: {test_score:.3f}")
-        
-        os.makedirs(self.models_dir, exist_ok=True)
-        joblib.dump(model, self.models_dir / "co2_model.pkl")
-        return model
-    
     def train_all_models(self):
-        """Train all models for the Green Coding Advisor"""
+        """Train all models for the Green Coding Advisor."""
         
         print("🚀 Starting Green Coding Advisor Model Training...")
         
@@ -422,7 +414,7 @@ def generic_handler(items):
         training_data = self.prepare_training_data()
         print(f"✅ Prepared {len(training_data)} training samples")
         
-        # Create models directory
+        # Create models directory once
         os.makedirs(self.models_dir, exist_ok=True)
         
         # Train individual models

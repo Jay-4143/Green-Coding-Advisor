@@ -102,6 +102,35 @@ async def get_current_active_user(
     return current_user
 
 
+async def get_optional_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False)),
+    db=Depends(get_mongo_db),
+) -> Optional[User]:
+    """Get current user if authenticated, otherwise return None"""
+    if not credentials:
+        return None
+    try:
+        credentials_exception = HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+        token_data = verify_token(credentials.credentials, credentials_exception)
+        user_doc = await db["users"].find_one({"username": token_data.username})
+        if not user_doc:
+            return None
+        
+        # Convert MongoDB document to User Pydantic model
+        user_doc.pop("_id", None)  # Remove MongoDB _id
+        user_doc.pop("hashed_password", None)  # Remove password from response
+        user = User(**user_doc)
+        if not user.is_active:
+            return None
+        return user
+    except Exception:
+        return None
+
+
 def require_role(required_role: str):
     """Dependency factory to require specific user role"""
 

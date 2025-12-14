@@ -45,21 +45,24 @@ const VerifyEmail: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-      <div className="bg-white rounded-lg shadow-md p-8 max-w-md w-full">
-        <h2 className="text-2xl font-bold mb-4">Verify Email</h2>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-6">
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl p-8 max-w-md w-full border border-gray-100 dark:border-slate-700">
+        <div className="mb-4">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Verify Email</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">We’re confirming your account.</p>
+        </div>
         {loading && (
           <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
           </div>
         )}
         {message && (
-          <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-green-800">
+          <div className="p-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg text-green-800 dark:text-green-300">
             {message}
           </div>
         )}
         {error && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-800">
+          <div className="p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-800 dark:text-red-300">
             {error}
           </div>
         )}
