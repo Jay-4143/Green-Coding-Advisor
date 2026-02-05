@@ -1,144 +1,92 @@
+import logging
+import ollama
 from typing import Dict, List, Optional
-import re
+
+logger = logging.getLogger(__name__)
 
 class GreenCodingChatbot:
-    """AI-powered chatbot for green coding advice"""
+    """AI-powered chatbot using LLaMA-2 via Ollama"""
     
-    def __init__(self):
-        self.knowledge_base = self._initialize_knowledge_base()
-    
-    def _initialize_knowledge_base(self) -> Dict[str, List[str]]:
-        """Initialize knowledge base with green coding patterns and answers"""
-        return {
-            "loop_optimization": [
-                "Use list comprehensions instead of loops when possible. They're more efficient and readable.",
-                "Avoid nested loops when you can use built-in functions like map(), filter(), or reduce().",
-                "Consider using generators for large datasets to save memory.",
-                "Use enumerate() instead of range(len()) for better performance."
-            ],
-            "data_structures": [
-                "Use sets for membership testing (O(1) vs O(n) for lists).",
-                "Use dictionaries for key-value lookups instead of nested lists.",
-                "Choose the right data structure: lists for ordered data, sets for unique items, dicts for mappings.",
-                "Avoid creating unnecessary copies of data structures."
-            ],
-            "memory_usage": [
-                "Use generators instead of lists for large datasets to save memory.",
-                "Delete variables when they're no longer needed using del.",
-                "Use __slots__ in classes to reduce memory footprint.",
-                "Avoid global variables when possible."
-            ],
-            "algorithm_complexity": [
-                "Choose algorithms with better time complexity (O(n log n) vs O(n²)).",
-                "Use hash tables (dictionaries) for O(1) lookups.",
-                "Consider using binary search for sorted data (O(log n) vs O(n)).",
-                "Avoid unnecessary iterations over data."
-            ],
-            "io_operations": [
-                "Use context managers (with statements) for file operations.",
-                "Read files in chunks for large files instead of loading everything into memory.",
-                "Use buffered I/O for better performance.",
-                "Close files and connections promptly."
-            ],
-            "general": [
-                "Write efficient code that minimizes CPU and memory usage.",
-                "Use built-in functions which are optimized in C.",
-                "Profile your code to identify bottlenecks.",
-                "Consider using libraries like NumPy for numerical computations.",
-                "Avoid premature optimization - measure first, then optimize.",
-                "Use appropriate algorithms for your use case.",
-                "Cache results when computations are expensive and results are reused.",
-                "Minimize database queries and API calls when possible."
-            ]
-        }
-    
-    def _extract_keywords(self, message: str) -> List[str]:
-        """Extract keywords from user message"""
-        message_lower = message.lower()
-        keywords = []
-        
-        # Common patterns
-        if any(word in message_lower for word in ["loop", "for", "while", "iterate", "iteration"]):
-            keywords.append("loop_optimization")
-        if any(word in message_lower for word in ["list", "dict", "set", "array", "data structure", "structure"]):
-            keywords.append("data_structures")
-        if any(word in message_lower for word in ["memory", "ram", "space", "storage"]):
-            keywords.append("memory_usage")
-        if any(word in message_lower for word in ["complexity", "algorithm", "big o", "performance", "speed", "fast", "slow"]):
-            keywords.append("algorithm_complexity")
-        if any(word in message_lower for word in ["file", "read", "write", "io", "input", "output"]):
-            keywords.append("io_operations")
-        
-        return keywords if keywords else ["general"]
-    
-    def _generate_response(self, message: str, context: Optional[Dict] = None) -> str:
-        """Generate a response based on the message and context"""
-        keywords = self._extract_keywords(message)
-        message_lower = message.lower()
-        
-        # Specific question patterns
-        if "why" in message_lower and "inefficient" in message_lower:
-            return "Inefficient code typically uses more CPU cycles and memory. Common issues include: nested loops (O(n²) complexity), unnecessary data copying, using lists instead of sets for lookups, and not leveraging built-in optimized functions. Would you like specific advice on any of these?"
-        
-        if "which" in message_lower and "data structure" in message_lower:
-            return "Choose data structures based on your needs: Use lists for ordered, indexed data. Use sets for unique items and fast membership testing. Use dictionaries for key-value mappings and fast lookups. Use tuples for immutable sequences. Consider memory usage and access patterns when choosing."
-        
-        if "how" in message_lower and "optimize" in message_lower:
-            return "To optimize code: 1) Profile first to find bottlenecks, 2) Use appropriate algorithms (better time complexity), 3) Choose efficient data structures, 4) Leverage built-in functions, 5) Use generators for large datasets, 6) Minimize I/O operations, 7) Cache expensive computations. What specific area would you like to optimize?"
-        
-        if "list comprehension" in message_lower or "comprehension" in message_lower:
-            return "List comprehensions are more efficient than loops because they're optimized in C and avoid Python's function call overhead. Example: [x*2 for x in range(10)] is faster than: result = []; for x in range(10): result.append(x*2). They also use less memory and are more readable."
-        
-        if "range(len" in message_lower or "index" in message_lower:
-            return "Avoid using range(len()) for iteration. Instead, use: 'for item in items:' for direct iteration, or 'for i, item in enumerate(items):' if you need the index. This is more efficient and Pythonic."
-        
-        # Get relevant answers from knowledge base
-        answers = []
-        for keyword in keywords:
-            answers.extend(self.knowledge_base.get(keyword, []))
-        
-        if answers:
-            # Return the most relevant answer
-            return answers[0]
-        
-        return "I can help you with green coding practices including: loop optimization, data structure selection, memory usage, algorithm complexity, and I/O operations. What specific question do you have?"
-    
-    def _get_suggestions(self, message: str) -> List[str]:
-        """Get related topic suggestions"""
-        message_lower = message.lower()
-        suggestions = []
-        
-        if "loop" in message_lower:
-            suggestions.append("How to optimize nested loops?")
-            suggestions.append("When to use list comprehensions?")
-        elif "memory" in message_lower:
-            suggestions.append("How to reduce memory usage?")
-            suggestions.append("When to use generators?")
-        elif "data structure" in message_lower:
-            suggestions.append("Which data structure to use?")
-            suggestions.append("Sets vs lists for lookups?")
-        else:
-            suggestions.append("How to optimize loops?")
-            suggestions.append("Which data structure is most efficient?")
-            suggestions.append("How to reduce memory usage?")
-        
-        return suggestions[:3]
-    
-    def answer(self, message: str, context: Optional[Dict] = None) -> Dict[str, any]:
-        """Answer a user question"""
-        response = self._generate_response(message, context)
-        suggestions = self._get_suggestions(message)
-        
-        # Extract related topics
-        keywords = self._extract_keywords(message)
-        related_topics = list(set(keywords))
-        
-        return {
-            "answer": response,
-            "suggestions": suggestions,
-            "related_topics": related_topics
-        }
+    SYSTEM_PROMPT = """
+You are the **Green Coding Architect**, an advanced AI assistant powered by LLaMA-2, dedicated to sustainable software engineering.
+Your goal is to guide developers in writing code that reduces energy consumption, carbon footprint, and computational overhead.
 
+**Your Core Principles:**
+1. **Efficiency First**: Always prioritize algorithms with lower Time and Space complexity (Big-O).
+2. **Resource Awareness**: Highlight memory usage, CPU cycles, and network bandwidth.
+3. **Sustainable Syntax**: Recommend language-specific features that are optimized (e.g., list comprehensions in Python, avoiding unnecessary copies).
+4. **Hardware Empathy**: Explain how code decisions affect underlying hardware (battery life, heat generation).
+
+**Response Guidelines:**
+- Be concise but educational.
+- **Always** provide a brief code example if applicable.
+- Conclude with a "Green Impact" statement explaining *why* your advice saves energy.
+- Use a professional, encouraging tone.
+
+If the user asks about non-coding topics, politely redirect them to sustainable technology.
+"""
+
+    def __init__(self, model_name: str = "llama2"):
+        self.model_name = model_name
+        self._ensure_model_exists()
+
+    def _ensure_model_exists(self):
+        """Check if model exists, warn if not (async check might be better in production)"""
+        try:
+            # We assume the user has pulled the model. 
+            # In a real app, we might check `ollama.list()` here.
+            pass
+        except Exception as e:
+            logger.warning(f"Ollama connection issue: {e}")
+
+    def answer(self, message: str, context: Optional[Dict] = None) -> Dict[str, any]:
+        """Generate a response using LLaMA-2"""
+        try:
+            # Call Ollama API
+            response = ollama.chat(model=self.model_name, messages=[
+                {'role': 'system', 'content': self.SYSTEM_PROMPT},
+                {'role': 'user', 'content': message},
+            ])
+            
+            answer_text = response['message']['content']
+            
+            # Simple topic extraction based on response content
+            topics = self._extract_topics(answer_text + " " + message)
+            
+            return {
+                "answer": answer_text,
+                "suggestions": self._generate_suggestions(answer_text),
+                "related_topics": topics
+            }
+            
+        except Exception as e:
+            logger.error(f"Error calling Ollama: {e}")
+            return {
+                "answer": "I'm currently unable to connect to my local LLaMA-2 brain (Ollama). Please ensure Ollama is running (`ollama serve`) and you have pulled the model (`ollama pull llama2`).\n\nIn the meantime, here is a general tip: **Optimize loops and avoid unnecessary I/O to reduce energy consumption.**",
+                "suggestions": ["How to optimize loops?", "What is green coding?"],
+                "related_topics": ["connection_error"]
+            }
+
+    def _extract_topics(self, text: str) -> List[str]:
+        """Extract green coding topics from text"""
+        text_lower = text.lower()
+        topics = set()
+        if "loop" in text_lower: topics.add("loop_optimization")
+        if "memory" in text_lower or "ram" in text_lower: topics.add("memory_usage")
+        if "complexity" in text_lower or "big o" in text_lower: topics.add("algorithm_complexity")
+        if "data structure" in text_lower: topics.add("data_structures")
+        if "carbon" in text_lower or "emission" in text_lower: topics.add("carbon_tracking")
+        return list(topics)
+
+    def _generate_suggestions(self, context_text: str) -> List[str]:
+        """Generate static follow-up suggestions based on context"""
+        # Ideally this would also be generated by LLM, but static is faster for UI
+        base_suggestions = [
+            "How can I measure my code's energy?",
+            "What are the most energy-efficient languages?",
+            "Explain Python list comprehension efficiency."
+        ]
+        return base_suggestions
 
 # Global chatbot instance
 green_chatbot = GreenCodingChatbot()

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Form, Request
 from datetime import timedelta, datetime
 import secrets
+import random
 from ..mongo import get_mongo_db, get_next_sequence
 from ..models import UserRole
 from ..schemas import UserCreate, UserResponse, LoginRequest, Token
@@ -24,6 +25,11 @@ router = APIRouter()
 
 # Import shared rate limiter
 from ..rate_limiter import limiter
+
+
+def _generate_otp(length: int = 6) -> str:
+    """Generate a numeric OTP of given length."""
+    return ''.join(str(random.randint(0, 9)) for _ in range(length))
 
 
 @router.post("/signup", response_model=UserResponse)
@@ -65,8 +71,9 @@ async def signup(request: Request, user_data: UserCreate, db=Depends(get_mongo_d
             detail="Email or username already registered"
         )
     
-    # Generate verification token
-    verification_token = secrets.token_urlsafe(32)
+    # Generate verification OTP (6 digits) valid for 10 minutes
+    otp_code = _generate_otp(6)
+    otp_expiry = datetime.utcnow() + timedelta(minutes=10)
     
     # Create new user
     hashed_password = get_password_hash(user_data.password)
@@ -79,7 +86,9 @@ async def signup(request: Request, user_data: UserCreate, db=Depends(get_mongo_d
         "role": (user_data.role or UserRole.DEVELOPER).value,
         "is_active": True,
         "is_verified": False,
-        "email_verification_token": verification_token,
+        "otp": otp_code,
+        "otp_expiry": otp_expiry,
+        "email_verification_token": None,
         "password_reset_token": None,
         "password_reset_expires": None,
         "current_streak": 0,
@@ -97,15 +106,16 @@ async def signup(request: Request, user_data: UserCreate, db=Depends(get_mongo_d
             detail="Could not create user account. Email or username may already exist.",
         )
     
-    # Send verification email
+    # Send OTP email
     try:
-        email_service.send_verification_email(
+        email_service.send_signup_otp_email(
             to_email=user_data.email,
-            verification_token=verification_token,
-            username=user_data.username
+            otp=otp_code,
+            username=user_data.username,
+            expiry_minutes=10
         )
     except Exception as e:
-        green_logger.logger.warning(f"Failed to send verification email: {e}")
+        green_logger.logger.warning(f"Failed to send signup OTP email: {e}")
     
     # Log user registration
     green_logger.log_user_action(
@@ -131,19 +141,34 @@ async def login(request: Request, login_data: LoginRequest, db=Depends(get_mongo
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid email format"
             )
-        user = await authenticate_user(db, login_data.email, login_data.password)
-        
+
+        # Find user first to differentiate errors
+        user = await db["users"].find_one({"email": login_data.email})
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect email or password",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        
+
+        # Check password explicitly for better messaging
+        if not verify_password(login_data.password, user.get("hashed_password", "")):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
         if not user.get("is_active", True):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Inactive user"
+            )
+
+        if not user.get("is_verified", False):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Account not verified. Please verify the OTP sent to your email."
             )
         
         # Create tokens
@@ -250,6 +275,63 @@ async def verify_email(token: str = Form(...), db=Depends(get_mongo_db)):
     return {"message": "Email verified successfully"}
 
 
+@router.post("/verify-otp")
+async def verify_otp(email: str = Form(...), otp: str = Form(...), db=Depends(get_mongo_db)):
+    """Verify email using OTP code"""
+    user = await db["users"].find_one({"email": email})
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid email or OTP"
+        )
+    
+    if user.get("is_verified"):
+        return {"message": "Account already verified"}
+    
+    stored_otp = user.get("otp")
+    otp_expiry = user.get("otp_expiry")
+    
+    if not stored_otp or not otp_expiry:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No OTP found. Please request a new one."
+        )
+    
+    if otp != stored_otp:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid OTP"
+        )
+    
+    if otp_expiry < datetime.utcnow():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="OTP has expired"
+        )
+    
+    # Mark verified and clear OTP
+    await db["users"].update_one(
+        {"id": user["id"]},
+        {
+            "$set": {
+                "is_verified": True,
+                "otp": None,
+                "otp_expiry": None,
+                "updated_at": datetime.utcnow(),
+            }
+        },
+    )
+    
+    green_logger.log_user_action(
+        user_id=user["id"],
+        action="otp_verified",
+        details={"email": user["email"]},
+    )
+    
+    return {"message": "OTP verified successfully"}
+
+
 @router.post("/forgot-password")
 async def forgot_password(email: str = Form(...), db=Depends(get_mongo_db)):
     """Send password reset email"""
@@ -260,7 +342,7 @@ async def forgot_password(email: str = Form(...), db=Depends(get_mongo_db)):
     
     # Generate reset token
     reset_token = secrets.token_urlsafe(32)
-    reset_expires = datetime.utcnow() + timedelta(hours=1)
+    reset_expires = datetime.utcnow() + timedelta(minutes=15)
     
     # Save reset token
     await db["users"].update_one(
@@ -269,6 +351,8 @@ async def forgot_password(email: str = Form(...), db=Depends(get_mongo_db)):
             "$set": {
                 "password_reset_token": reset_token,
                 "password_reset_expires": reset_expires,
+                "reset_token": reset_token,
+                "reset_token_expiry": reset_expires,
                 "updated_at": datetime.utcnow(),
             }
         },
@@ -299,7 +383,7 @@ async def reset_password(
     token: str = Form(...), new_password: str = Form(...), db=Depends(get_mongo_db)
 ):
     """Reset password with token"""
-    user = await db["users"].find_one({"password_reset_token": token})
+    user = await db["users"].find_one({"$or": [{"password_reset_token": token}, {"reset_token": token}]})
     
     if not user:
         raise HTTPException(
@@ -308,7 +392,8 @@ async def reset_password(
         )
     
     # Check if token expired
-    if user.get("password_reset_expires") and user["password_reset_expires"] < datetime.utcnow():
+    expiry = user.get("password_reset_expires") or user.get("reset_token_expiry")
+    if expiry and expiry < datetime.utcnow():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Reset token has expired"
@@ -338,6 +423,8 @@ async def reset_password(
                 "hashed_password": hashed,
                 "password_reset_token": None,
                 "password_reset_expires": None,
+                "reset_token": None,
+                "reset_token_expiry": None,
                 "updated_at": datetime.utcnow(),
             }
         },

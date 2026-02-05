@@ -407,27 +407,27 @@ def generic_handler(items):
     def train_all_models(self):
         """Train all models for the Green Coding Advisor."""
         
-        print("🚀 Starting Green Coding Advisor Model Training...")
+        print("Starting Green Coding Advisor Model Training...")
         
         # Prepare training data
-        print("📊 Preparing training data...")
+        print("Preparing training data...")
         training_data = self.prepare_training_data()
-        print(f"✅ Prepared {len(training_data)} training samples")
+        print(f"Prepared {len(training_data)} training samples")
         
         # Create models directory once
         os.makedirs(self.models_dir, exist_ok=True)
         
         # Train individual models
-        print("🤖 Training Green Score model...")
+        print("Training Green Score model...")
         green_score_model = self.train_green_score_model(training_data)
         
-        print("⚡ Training Energy consumption model...")
+        print("Training Energy consumption model...")
         energy_model = self.train_energy_model(training_data)
         
-        print("🌍 Training CO2 emissions model...")
+        print("Training CO2 emissions model...")
         co2_model = self.train_co2_model(training_data)
         
-        print("✅ All models trained successfully!")
+        print("All models trained successfully!")
         
         return {
             "green_score": green_score_model,

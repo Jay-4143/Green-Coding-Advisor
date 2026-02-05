@@ -34,6 +34,10 @@ class UserResponse(UserBase):
     is_active: bool
     is_verified: bool
     created_at: datetime
+    otp: Optional[str] = None
+    otp_expiry: Optional[datetime] = None
+    reset_token: Optional[str] = None
+    reset_token_expiry: Optional[datetime] = None
     
     class Config:
         from_attributes = True
@@ -45,6 +49,10 @@ class User(UserBase):
     is_active: bool = True
     is_verified: bool = False
     created_at: Optional[datetime] = None
+    otp: Optional[str] = None
+    otp_expiry: Optional[datetime] = None
+    reset_token: Optional[str] = None
+    reset_token_expiry: Optional[datetime] = None
     
     class Config:
         from_attributes = True

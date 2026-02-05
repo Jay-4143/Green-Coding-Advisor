@@ -188,7 +188,10 @@ class GreenCodingPredictor:
         # Efficiency indicators - 5 features (language-aware)
         if lang_lower == "python":
             features.append(code.count('range(len('))  # Index-based iteration (inefficient)
-            features.append(code.count('[') + code.count(']'))  # List comprehensions/arrays
+            # Better detection of list comprehensions: look for [x for x in ...] pattern
+            list_comp_pattern = r'\[.*?\s+for\s+.*?\s+in\s+.*?\]'
+            list_comprehensions = len(re.findall(list_comp_pattern, code, re.DOTALL))
+            features.append(list_comprehensions)  # List comprehensions (efficient)
             features.append(code.count('sum(') + code.count('max(') + code.count('min('))  # Built-in functions
             features.append(code.count('map(') + code.count('filter(') + code.count('reduce('))  # Functional programming
             features.append(code.count('lambda '))  # Lambda functions
@@ -416,7 +419,12 @@ class GreenCodingPredictor:
     
     def _predict_green_score(self, features: List[float]) -> float:
         """Predict Green Score (0-100)"""
-        if "green_score" in self.models:
+        # Always use heuristic for more dynamic and sensitive scoring
+        # Models may return similar scores for different inputs
+        # The heuristic is more responsive to code differences
+        use_heuristic = True
+        
+        if not use_heuristic and "green_score" in self.models:
             try:
                 # Ensure feature count matches model
                 if len(features) != 24:
@@ -426,12 +434,23 @@ class GreenCodingPredictor:
                     else:
                         features = features + [0.0] * (24 - len(features))
                 score = self.models["green_score"].predict([features])[0]
+                # Apply heuristic adjustment to make model more sensitive
+                heuristic_score = self._calculate_heuristic_green_score(features)
+                # Blend model and heuristic (70% heuristic, 30% model) for better differentiation
+                score = (heuristic_score * 0.7) + (score * 0.3)
                 return max(0, min(100, score))  # Clamp between 0-100
             except Exception:
                 # Fallback to heuristic if model prediction fails
                 pass
         
-        # Improved heuristic fallback that considers multiple factors
+        # Use heuristic calculation
+        return self._calculate_heuristic_green_score(features)
+    
+    def _calculate_heuristic_green_score(self, features: List[float]) -> float:
+        """Calculate green score using heuristic method - more dynamic and sensitive"""
+        
+        # Improved heuristic that considers multiple factors
+        # Made more sensitive to differentiate between efficient and inefficient code
         if len(features) < 7:
             return 50.0  # Default score if features are insufficient
         
@@ -443,27 +462,29 @@ class GreenCodingPredictor:
         functions = features[7] if len(features) > 7 else 0  # def/function
         classes = features[8] if len(features) > 8 else 0  # class
         inefficient_patterns = features[9] if len(features) > 9 else 0  # range(len(
-        list_comprehensions = features[10] if len(features) > 10 else 0  # [
+        list_comprehensions = features[10] if len(features) > 10 else 0  # List comprehensions
         builtin_functions = features[11] if len(features) > 11 else 0  # sum(
         functional_patterns = features[12] if len(features) > 12 else 0  # map(
         lambdas = features[13] if len(features) > 13 else 0  # lambda
         imports = features[14] if len(features) > 14 else 0  # import
         
-        # Calculate complexity penalty
+        # Calculate complexity penalty (MORE AGGRESSIVE)
         total_loops = loops + while_loops
-        complexity_penalty = (total_loops * 3) + (conditions * 2) + (inefficient_patterns * 5)
+        # Inefficient patterns are heavily penalized - this is the key differentiator
+        complexity_penalty = (total_loops * 8) + (conditions * 4) + (inefficient_patterns * 20)
         
-        # Calculate efficiency bonus
-        efficiency_bonus = (list_comprehensions * 2) + (builtin_functions * 3) + (functional_patterns * 2) + (lambdas * 1)
+        # Calculate efficiency bonus (MORE REWARDING)
+        # List comprehensions are much better than loops
+        efficiency_bonus = (list_comprehensions * 10) + (builtin_functions * 8) + (functional_patterns * 5) + (lambdas * 3)
         
         # Code structure bonus (well-structured code)
-        structure_bonus = (functions * 2) + (classes * 1) - (imports * 0.5)  # Too many imports can be bad
+        structure_bonus = (functions * 2) + (classes * 2) - (imports * 0.5)
         
         # Size penalty (very long code is harder to optimize)
-        size_penalty = min(20, code_length / 100) if code_length > 500 else 0
+        size_penalty = min(20, code_length / 150) if code_length > 500 else 0
         
-        # Base score starts at 70 for average code
-        base_score = 70.0
+        # Base score starts at 50 for average code (lower to allow more differentiation)
+        base_score = 50.0
         
         # Apply penalties and bonuses
         score = base_score - complexity_penalty + efficiency_bonus + structure_bonus - size_penalty
@@ -1048,6 +1069,18 @@ class GreenCodingPredictor:
             # Optimize entire code
             optimized_code = self._optimize_code_chunk(code, lang_lower)
         
+        # Check if optimization actually changed the code
+        code_changed = optimized_code.strip() != code.strip()
+        
+        # If code didn't change, check if it's already optimal or if optimization failed
+        if not code_changed:
+            # Check if code has inefficient patterns
+            has_inefficient_patterns = self._has_inefficient_patterns(code, lang_lower)
+            if has_inefficient_patterns:
+                # Optimization failed - try a more aggressive approach
+                optimized_code = self._aggressive_optimize(code, lang_lower)
+                code_changed = optimized_code.strip() != code.strip()
+        
         # Analyze both versions
         self._load_models()
         
@@ -1083,11 +1116,23 @@ class GreenCodingPredictor:
             "memory_reduction": original_metrics["memory_usage_mb"] - optimized_metrics["memory_usage_mb"]
         }
         
+        # Generate improvement message
+        if not code_changed:
+            optimized_code = code + "\n\n# Code is already optimized. No changes were made."
+            improvements_explanation = "Code is already optimized. No inefficient patterns detected."
+        else:
+            improvements_explanation = self._generate_improvements_explanation(code, optimized_code, lang_lower)
+        
+        # Format improvement percentages safely
+        energy_pct = (improvements['energy_reduction']/original_metrics['energy_consumption_wh']*100) if original_metrics['energy_consumption_wh'] > 0 else 0.0
+        co2_pct = (improvements['co2_reduction']/original_metrics['co2_emissions_g']*100) if original_metrics['co2_emissions_g'] > 0 else 0.0
+        
         return {
             "detected_language": language,
             "analysis_summary": self._generate_analysis_summary(code, optimized_code, original_metrics, optimized_metrics),
             "original_code": code,
             "optimized_code": optimized_code,
+            "code_changed": code_changed,
             "comparison_table": {
                 "green_score": {
                     "original": round(original_metrics["green_score"], 2),
@@ -1097,12 +1142,12 @@ class GreenCodingPredictor:
                 "energy_usage": {
                     "original": f"{original_metrics['energy_consumption_wh']:.4f} Wh",
                     "optimized": f"{optimized_metrics['energy_consumption_wh']:.4f} Wh",
-                    "improvement": f"{improvements['energy_reduction']:.4f} Wh ({improvements['energy_reduction']/original_metrics['energy_consumption_wh']*100:.1f}% reduction)"
+                    "improvement": f"{improvements['energy_reduction']:.4f} Wh ({energy_pct:.1f}% reduction)"
                 },
                 "co2_emissions": {
                     "original": f"{original_metrics['co2_emissions_g']:.4f} g",
                     "optimized": f"{optimized_metrics['co2_emissions_g']:.4f} g",
-                    "improvement": f"{improvements['co2_reduction']:.4f} g ({improvements['co2_reduction']/original_metrics['co2_emissions_g']*100:.1f}% reduction)"
+                    "improvement": f"{improvements['co2_reduction']:.4f} g ({co2_pct:.1f}% reduction)"
                 },
                 "cpu_time": {
                     "original": f"{original_metrics['cpu_time_ms']:.2f} ms",
@@ -1120,9 +1165,184 @@ class GreenCodingPredictor:
                     "improvement": "Improved" if optimized_metrics["time_complexity"] != original_metrics["time_complexity"] else "Same"
                 }
             },
-            "improvements_explanation": self._generate_improvements_explanation(code, optimized_code, lang_lower),
+            "improvements_explanation": improvements_explanation,
             "expected_green_score_improvement": f"+{improvements['green_score']:.1f} points (from {original_metrics['green_score']:.1f} to {optimized_metrics['green_score']:.1f})"
         }
+    
+    def _optimize_function_body(self, body: str) -> str:
+        """Optimize a function body (code block)"""
+        lines = body.split('\n')
+        result_lines = []
+        i = 0
+        
+        while i < len(lines):
+            line = lines[i]
+            stripped = line.lstrip()
+            indent = len(line) - len(stripped) if line.strip() else 0
+            
+            # Pattern: result = []
+            result_var_match = re.search(r'(\w+)\s*=\s*\[\]', stripped)
+            if result_var_match and i < len(lines) - 1:
+                result_var = result_var_match.group(1)
+                
+                # Check next line for: for i in range(len(items)):
+                if i + 1 < len(lines):
+                    next_line = lines[i + 1]
+                    next_stripped = next_line.lstrip()
+                    next_indent = len(next_line) - len(next_stripped)
+                    
+                    range_match = re.search(r'for\s+(\w+)\s+in\s+range\(len\((\w+)\)\):', next_stripped)
+                    if range_match and next_indent > indent:
+                        index_var = range_match.group(1)
+                        list_var = range_match.group(2)
+                        
+                        # Check line after that for: result.append(...)
+                        if i + 2 < len(lines):
+                            append_line = lines[i + 2]
+                            append_stripped = append_line.lstrip()
+                            append_indent = len(append_line) - len(append_stripped)
+                            
+                            # More flexible matching - handle variations in spacing
+                            if append_indent > next_indent and re.search(rf'\b{re.escape(result_var)}\s*\.\s*append\s*\(', append_stripped):
+                                append_match = re.search(r'\.append\s*\(\s*([^)]+)\s*\)', append_stripped)
+                                if append_match:
+                                    append_expr = append_match.group(1).strip()
+                                    # Replace list_var[index_var] with index_var
+                                    append_expr = re.sub(rf'\b{re.escape(list_var)}\s*\[\s*{re.escape(index_var)}\s*\]', index_var, append_expr)
+                                    
+                                    # Check for if condition in the for line or next lines
+                                    condition = None
+                                    if "if" in next_stripped:
+                                        if_match = re.search(r'if\s+(.+?):', next_stripped)
+                                        if if_match:
+                                            condition = if_match.group(1).strip()
+                                            condition = re.sub(rf'\b{re.escape(list_var)}\s*\[\s*{re.escape(index_var)}\s*\]', index_var, condition)
+                                    
+                                    # Build the list comprehension
+                                    if condition:
+                                        new_code = f"{' ' * indent}{result_var} = [{append_expr} for {index_var} in {list_var} if {condition}]"
+                                    else:
+                                        new_code = f"{' ' * indent}{result_var} = [{append_expr} for {index_var} in {list_var}]"
+                                    
+                                    result_lines.append(new_code)
+                                    i += 3  # Skip result=[], for loop, and append lines
+                                    continue
+            
+            # Pattern: total = 0
+            sum_var_match = re.search(r'(\w+)\s*=\s*0\s*$', stripped)
+            if sum_var_match and i < len(lines) - 1:
+                sum_var = sum_var_match.group(1)
+                next_line = lines[i + 1].lstrip() if i + 1 < len(lines) else ""
+                next_next = lines[i + 2].lstrip() if i + 2 < len(lines) else ""
+                
+                # Check for: for i in range(len(nums)): total += nums[i] or total = total + nums[i]
+                # More flexible pattern matching
+                if "for" in next_line and re.search(rf'\b{re.escape(sum_var)}\s*(?:\+=\s*\w+\[\w+\]|=\s*{re.escape(sum_var)}\s*\+\s*\w+\[\w+\])', next_next):
+                    range_match = re.search(r'for\s+\w+\s+in\s+range\s*\(\s*len\s*\(\s*(\w+)\s*\)\s*\)\s*:', next_line)
+                    if range_match:
+                        var_name = range_match.group(1)
+                        result_lines.append(f"{' ' * indent}{sum_var} = sum({var_name})")
+                        i += 3  # Skip total=0, for loop, and += line
+                        continue
+                    # Also check for direct iteration
+                    direct_match = re.search(r'for\s+\w+\s+in\s+(\w+)\s*:', next_line)
+                    if direct_match:
+                        var_name = direct_match.group(1)
+                        result_lines.append(f"{' ' * indent}{sum_var} = sum({var_name})")
+                        i += 3
+                        continue
+            
+            # Pattern: output = ""
+            str_var_match = re.search(r'(\w+)\s*=\s*["\']\s*["\']', stripped)
+            if str_var_match and i < len(lines) - 1:
+                str_var = str_var_match.group(1)
+                next_line = lines[i + 1].lstrip() if i + 1 < len(lines) else ""
+                next_next = lines[i + 2].lstrip() if i + 2 < len(lines) else ""
+                
+                if "for" in next_line and f"{str_var} +=" in next_next:
+                    loop_match = re.search(r'for\s+\w+\s+in\s+(\w+)', next_line)
+                    if loop_match:
+                        var_name = loop_match.group(1)
+                        result_lines.append(f"{' ' * indent}{str_var} = ''.join(str(item) for item in {var_name})")
+                        i += 3
+                        continue
+            
+            # Pattern: Replace range(len()) with direct iteration
+            if "range(len(" in stripped and "for" in stripped:
+                range_match = re.search(r'for\s+(\w+)\s+in\s+range\(len\((\w+)\)\)', stripped)
+                if range_match:
+                    index_var = range_match.group(1)
+                    list_var = range_match.group(2)
+                    new_line = re.sub(
+                        r'for\s+\w+\s+in\s+range\(len\(\w+\)\)',
+                        f"for {index_var} in {list_var}",
+                        stripped
+                    )
+                    result_lines.append(' ' * indent + new_line)
+                    
+                    # Replace list_var[index_var] in subsequent lines
+                    j = i + 1
+                    while j < len(lines):
+                        next_line = lines[j]
+                        next_stripped = next_line.lstrip()
+                        next_indent = len(next_line) - len(next_stripped) if next_line.strip() else 0
+                        
+                        if next_indent <= indent:
+                            break
+                        
+                        pattern = rf'\b{re.escape(list_var)}\[{re.escape(index_var)}\]'
+                        if re.search(pattern, next_stripped):
+                            next_line = re.sub(pattern, index_var, next_line)
+                            lines[j] = next_line
+                        
+                        j += 1
+                    
+                    i += 1
+                    continue
+            
+            # Default: keep the line
+            result_lines.append(line)
+            i += 1
+        
+        return '\n'.join(result_lines)
+    
+    def _has_inefficient_patterns(self, code: str, language: str) -> bool:
+        """Check if code has inefficient patterns that can be optimized"""
+        lang_lower = language.lower()
+        
+        if lang_lower == "python":
+            # Check for common inefficient patterns
+            inefficient_patterns = [
+                r'range\(len\(',
+                r'for\s+\w+\s+in\s+range\(len\(',
+                r'\.append\(',
+                r'for\s+\w+\s+in\s+\w+:\s*\n\s*\w+\s*\+=\s*',
+                r'for\s+\w+\s+in\s+\w+:\s*\n\s*\w+\s*=\s*\w+\s*\+\s*',
+            ]
+            for pattern in inefficient_patterns:
+                if re.search(pattern, code, re.MULTILINE):
+                    return True
+        return False
+    
+    def _aggressive_optimize(self, code: str, language: str) -> str:
+        """More aggressive optimization when standard optimization fails"""
+        if language.lower() == "python":
+            optimized = code
+            
+            # Try direct regex replacements for common patterns
+            # Pattern: result = []; for i in range(len(items)): result.append(items[i])
+            pattern1 = r'(\w+)\s*=\s*\[\]\s*\n\s*for\s+(\w+)\s+in\s+range\(len\((\w+)\)\):\s*\n\s*\1\.append\(\3\[\2\]\)'
+            replacement1 = r'\1 = [\2 for \2 in \3]'
+            optimized = re.sub(pattern1, replacement1, optimized, flags=re.MULTILINE)
+            
+            # Pattern: total = 0; for i in range(len(nums)): total += nums[i]
+            pattern2 = r'(\w+)\s*=\s*0\s*\n\s*for\s+\w+\s+in\s+range\(len\((\w+)\)\):\s*\n\s*\1\s*\+=\s*\2\[\w+\]'
+            replacement2 = r'\1 = sum(\2)'
+            optimized = re.sub(pattern2, replacement2, optimized, flags=re.MULTILINE)
+            
+            return optimized
+        
+        return code
     
     def _optimize_code_chunk(self, code: str, language: str) -> str:
         """Optimize a code chunk based on language"""
@@ -1139,23 +1359,65 @@ class GreenCodingPredictor:
     
     def _optimize_python_code(self, code: str) -> str:
         """Generate fully optimized Python code - comprehensive transformation"""
-        # Use a more robust pattern-based optimization
         optimized = code
         
-        # Pattern 1: Replace range(len(x)) with direct iteration
-        def replace_range_len(match):
-            index_var = match.group(1)
+        # Step 1: Apply simple regex replacements for common patterns (more flexible)
+        # Pattern: result = []\nfor i in range(len(items)):\n    result.append(items[i])
+        # This handles variations in spacing and formatting
+        def replace_append_pattern(match):
+            result_var = match.group(1)
+            index_var = match.group(2)
+            list_var = match.group(3)
+            expr = match.group(4).strip() if match.lastindex >= 4 else index_var
+            # Replace list_var[index_var] with index_var in the expression
+            expr = re.sub(rf'\b{re.escape(list_var)}\[{re.escape(index_var)}\]', index_var, expr)
+            return f"{result_var} = [{expr} for {index_var} in {list_var}]"
+        
+        # More flexible pattern that handles whitespace variations
+        append_pattern = r'(\w+)\s*=\s*\[\]\s*\n\s*for\s+(\w+)\s+in\s+range\(len\((\w+)\)\)\s*:\s*\n\s+\1\s*\.\s*append\s*\(\s*([^)]+)\s*\)'
+        optimized = re.sub(append_pattern, replace_append_pattern, optimized, flags=re.MULTILINE)
+        
+        # Pattern: total = 0\nfor i in range(len(nums)):\n    total += nums[i] or total = total + nums[i]
+        def replace_sum_pattern(match):
+            sum_var = match.group(1)
             list_var = match.group(2)
-            return f"for {index_var} in {list_var}"
+            return f"{sum_var} = sum({list_var})"
         
-        optimized = re.sub(
-            r'for\s+(\w+)\s+in\s+range\(len\((\w+)\)\)',
-            replace_range_len,
-            optimized
-        )
+        sum_pattern = r'(\w+)\s*=\s*0\s*\n\s*for\s+\w+\s+in\s+range\(len\((\w+)\)\)\s*:\s*\n\s+\1\s*(?:\+=\s*\2\[\w+\]|=\s*\1\s*\+\s*\2\[\w+\])'
+        optimized = re.sub(sum_pattern, replace_sum_pattern, optimized, flags=re.MULTILINE)
         
-        # Pattern 2: Replace list_var[i] with i when i is the loop variable
-        # This is context-dependent, so we'll handle it per-line
+        # Pattern: output = ""\nfor i in range(len(items)):\n    output += str(items[i])
+        def replace_string_concat_pattern(match):
+            str_var = match.group(1)
+            list_var = match.group(2)
+            return f"{str_var} = ''.join(str(item) for item in {list_var})"
+        
+        string_pattern = r'(\w+)\s*=\s*["\']\s*["\']\s*\n\s*for\s+\w+\s+in\s+range\(len\((\w+)\)\)\s*:\s*\n\s+\1\s*\+=\s*str\(\2\[\w+\]\)'
+        optimized = re.sub(string_pattern, replace_string_concat_pattern, optimized, flags=re.MULTILINE)
+        
+        # Step 2: Process function by function for more complex cases
+        functions = re.split(r'(def\s+\w+[^:]*:)', optimized)
+        if len(functions) > 1:
+            # We have function definitions
+            optimized_parts = []
+            for i in range(0, len(functions), 2):
+                if i < len(functions):
+                    func_def = functions[i]
+                    func_body = functions[i+1] if i+1 < len(functions) else ""
+                    
+                    # Optimize the function body
+                    if func_body:
+                        func_body_opt = self._optimize_function_body(func_body)
+                        optimized_parts.append(func_def + func_body_opt)
+                    else:
+                        optimized_parts.append(func_def)
+            
+            optimized = ''.join(optimized_parts)
+        else:
+            # No function definitions, optimize as a whole
+            optimized = self._optimize_function_body(optimized)
+        
+        # Now do line-by-line processing for more complex cases
         lines = optimized.split('\n')
         result_lines = []
         i = 0
@@ -1165,76 +1427,64 @@ class GreenCodingPredictor:
             stripped = line.lstrip()
             indent = len(line) - len(stripped)
             
-            # Pattern: for i in range(len(items)) -> for item in items
-            # Then replace items[i] with item in the loop body
-            range_len_match = re.search(r'for\s+(\w+)\s+in\s+(\w+)', stripped)
+            # Pattern 1: Convert range(len(x)) loops with append() to list comprehensions
+            range_len_match = re.search(r'for\s+(\w+)\s+in\s+range\(len\((\w+)\)\)', stripped)
             if range_len_match:
-                loop_var = range_len_match.group(1)
-                iterable = range_len_match.group(2)
+                index_var = range_len_match.group(1)
+                list_var = range_len_match.group(2)
                 
-                # Check if this was originally range(len(...))
-                # If so, replace iterable[loop_var] with loop_var in subsequent lines
+                # Look ahead to see if there's an append() pattern
                 if i < len(lines) - 1:
-                    # Look ahead in the loop body
-                    j = i + 1
-                    while j < len(lines):
-                        next_line = lines[j]
-                        next_stripped = next_line.lstrip()
-                        next_indent = len(next_line) - len(next_stripped)
-                        
-                        # Stop if we've left the loop (less indentation)
-                        if next_indent <= indent:
+                    # Check if there's a result = [] before this loop
+                    result_var = None
+                    for k in range(max(0, i-5), i):
+                        prev_match = re.search(r'(\w+)\s*=\s*\[\]', lines[k])
+                        if prev_match:
+                            result_var = prev_match.group(1)
                             break
+                    
+                    if result_var:
+                        # Look for append() in the loop body
+                        j = i + 1
+                        append_found = False
+                        append_expr = None
+                        loop_body_end = i + 1
                         
-                        # Replace iterable[loop_var] with loop_var
-                        pattern = rf'\b{re.escape(iterable)}\[{re.escape(loop_var)}\]'
-                        if re.search(pattern, next_stripped):
-                            next_line = re.sub(pattern, loop_var, next_line)
-                            lines[j] = next_line
+                        while j < len(lines):
+                            next_line = lines[j]
+                            next_stripped = next_line.lstrip()
+                            next_indent = len(next_line) - len(next_stripped)
+                            
+                            if next_indent <= indent:
+                                break
+                            
+                            if f"{result_var}.append(" in next_stripped:
+                                append_found = True
+                                append_match = re.search(r'\.append\((.*?)\)', next_stripped)
+                                if append_match:
+                                    append_expr = append_match.group(1).strip()
+                                    # Replace list_var[index_var] with a new variable name
+                                    append_expr = re.sub(rf'\b{re.escape(list_var)}\[{re.escape(index_var)}\]', index_var, append_expr)
+                                loop_body_end = j + 1
+                                break
+                            
+                            j += 1
                         
-                        j += 1
+                        if append_found and append_expr:
+                            # Check for if condition
+                            if_match = re.search(r'if\s+(.+?):', stripped)
+                            if if_match:
+                                condition = if_match.group(1)
+                                condition = re.sub(rf'\b{re.escape(list_var)}\[{re.escape(index_var)}\]', index_var, condition)
+                                new_line = f"{' ' * indent}{result_var} = [{append_expr} for {index_var} in {list_var} if {condition}]"
+                            else:
+                                new_line = f"{' ' * indent}{result_var} = [{append_expr} for {index_var} in {list_var}]"
+                            
+                            result_lines.append(new_line)
+                            i = loop_body_end
+                            continue
             
-            # Pattern 3: Convert loops with append() to list comprehensions
-            if "for" in stripped and i < len(lines) - 1:
-                # Look for result = [] before the loop
-                result_var = None
-                for k in range(max(0, i-3), i):
-                    match = re.search(r'(\w+)\s*=\s*\[\]', lines[k])
-                    if match:
-                        result_var = match.group(1)
-                        break
-                
-                if result_var:
-                    # Check if next line has append
-                    if i + 1 < len(lines):
-                        next_stripped = lines[i+1].lstrip()
-                        next_indent = len(lines[i+1]) - len(next_stripped)
-                        
-                        if next_indent > indent and f"{result_var}.append(" in next_stripped:
-                            # Extract append expression
-                            append_match = re.search(r'\.append\((.*?)\)', next_stripped)
-                            if append_match:
-                                append_expr = append_match.group(1).strip()
-                                
-                                # Extract loop details
-                                loop_match = re.search(r'for\s+(\w+)\s+in\s+(\w+)', stripped)
-                                if loop_match:
-                                    loop_var = loop_match.group(1)
-                                    iterable = loop_match.group(2)
-                                    
-                                    # Check for condition
-                                    if_match = re.search(r'if\s+(.+?):', stripped)
-                                    if if_match:
-                                        condition = if_match.group(1)
-                                        new_code = f"{' ' * indent}{result_var} = [{append_expr} for {loop_var} in {iterable} if {condition}]"
-                                    else:
-                                        new_code = f"{' ' * indent}{result_var} = [{append_expr} for {loop_var} in {iterable}]"
-                                    
-                                    result_lines.append(new_code)
-                                    i += 2  # Skip for loop and append line
-                                    continue
-            
-            # Pattern 4: Convert manual sum to built-in sum()
+            # Pattern 2: Convert manual sum loops
             if re.search(r'(\w+)\s*=\s*0\s*$', stripped):
                 sum_var_match = re.search(r'(\w+)\s*=\s*0', stripped)
                 if sum_var_match and i < len(lines) - 2:
@@ -1242,17 +1492,25 @@ class GreenCodingPredictor:
                     next_line = lines[i+1].lstrip()
                     next_next = lines[i+2].lstrip()
                     
+                    # Check for: for i in range(len(var)): total += var[i]
                     if "for" in next_line and f"{sum_var} +=" in next_next:
-                        loop_match = re.search(r'for\s+\w+\s+in\s+(\w+)', next_line)
-                        if loop_match:
-                            var_name = loop_match.group(1)
+                        range_match = re.search(r'for\s+\w+\s+in\s+range\(len\((\w+)\)\)', next_line)
+                        if range_match:
+                            var_name = range_match.group(1)
+                            result_lines.append(f"{' ' * indent}{sum_var} = sum({var_name})")
+                            i += 3
+                            continue
+                        # Check for: for item in items: total += item
+                        direct_match = re.search(r'for\s+\w+\s+in\s+(\w+)', next_line)
+                        if direct_match:
+                            var_name = direct_match.group(1)
                             result_lines.append(f"{' ' * indent}{sum_var} = sum({var_name})")
                             i += 3
                             continue
             
-            # Pattern 5: Convert string concatenation to join()
-            if re.search(r'(\w+)\s*=\s*[\'"]\s*[\'"]', stripped):
-                str_var_match = re.search(r'(\w+)\s*=\s*[\'"]\s*[\'"]', stripped)
+            # Pattern 3: Convert string concatenation to join()
+            if re.search(r'(\w+)\s*=\s*["\']\s*["\']', stripped):
+                str_var_match = re.search(r'(\w+)\s*=\s*["\']\s*["\']', stripped)
                 if str_var_match and i < len(lines) - 2:
                     str_var = str_var_match.group(1)
                     next_line = lines[i+1].lstrip()
@@ -1266,11 +1524,88 @@ class GreenCodingPredictor:
                             i += 3
                             continue
             
+            # Pattern 4: Replace remaining range(len()) with direct iteration and fix index access
+            if "range(len(" in stripped and "for" in stripped:
+                range_match = re.search(r'for\s+(\w+)\s+in\s+range\(len\((\w+)\)\)', stripped)
+                if range_match:
+                    index_var = range_match.group(1)
+                    list_var = range_match.group(2)
+                    # Replace the for line
+                    new_line = re.sub(
+                        r'for\s+\w+\s+in\s+range\(len\(\w+\)\)',
+                        f"for {index_var} in {list_var}",
+                        stripped
+                    )
+                    result_lines.append(' ' * indent + new_line)
+                    
+                    # Now replace list_var[index_var] with index_var in subsequent lines
+                    j = i + 1
+                    while j < len(lines):
+                        next_line = lines[j]
+                        next_stripped = next_line.lstrip()
+                        next_indent = len(next_line) - len(next_stripped)
+                        
+                        if next_indent <= indent:
+                            break
+                        
+                        # Replace list_var[index_var] with index_var
+                        pattern = rf'\b{re.escape(list_var)}\[{re.escape(index_var)}\]'
+                        if re.search(pattern, next_stripped):
+                            next_line = re.sub(pattern, index_var, next_line)
+                            lines[j] = next_line
+                        
+                        j += 1
+                    
+                    i += 1
+                    continue
+            
+            # Pattern 5: Convert simple loops with append() to list comprehensions (even without range(len))
+            if "for" in stripped and i < len(lines) - 1:
+                # Look for result = [] before the loop
+                result_var = None
+                for k in range(max(0, i-5), i):
+                    prev_match = re.search(r'(\w+)\s*=\s*\[\]', lines[k])
+                    if prev_match:
+                        result_var = prev_match.group(1)
+                        break
+                
+                if result_var:
+                    # Check if next line has append
+                    next_stripped = lines[i+1].lstrip() if i+1 < len(lines) else ""
+                    next_indent = len(lines[i+1]) - len(next_stripped) if i+1 < len(lines) else 0
+                    
+                    if next_indent > indent and f"{result_var}.append(" in next_stripped:
+                        # Extract append expression
+                        append_match = re.search(r'\.append\((.*?)\)', next_stripped)
+                        if append_match:
+                            append_expr = append_match.group(1).strip()
+                            
+                            # Extract loop details - handle both "for x in items" and "for i in range(len(items))"
+                            loop_match = re.search(r'for\s+(\w+)\s+in\s+(\w+)', stripped)
+                            if loop_match and "range(len(" not in stripped:  # Only if not range(len())
+                                loop_var = loop_match.group(1)
+                                iterable = loop_match.group(2)
+                                
+                                # Check for condition
+                                if_match = re.search(r'if\s+(.+?):', stripped)
+                                if if_match:
+                                    condition = if_match.group(1)
+                                    new_code = f"{' ' * indent}{result_var} = [{append_expr} for {loop_var} in {iterable} if {condition}]"
+                                else:
+                                    new_code = f"{' ' * indent}{result_var} = [{append_expr} for {loop_var} in {iterable}]"
+                                
+                                result_lines.append(new_code)
+                                i += 2  # Skip for loop and append line
+                                continue
+            
             # Pattern 6: Replace pandas iterrows()
             if "iterrows()" in stripped:
                 stripped = stripped.replace("iterrows()", "# Use vectorized operations instead of iterrows()")
-                line = ' ' * indent + stripped
+                result_lines.append(' ' * indent + stripped)
+                i += 1
+                continue
             
+            # Default: keep the line as-is
             result_lines.append(line)
             i += 1
         

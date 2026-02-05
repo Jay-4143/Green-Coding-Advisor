@@ -19,12 +19,12 @@ const Chatbot: React.FC = () => {
     {
       id: 1,
       type: 'bot',
-      content: "Hello! I'm your Green Coding Advisor. I can help you with questions about sustainable coding practices, optimization techniques, data structures, and more. What would you like to know?",
+      content: "Hello! I am the **Green Coding Architect**, powered by LLaMA-2. I'm here to help you design energy-efficient, sustainable software systems.\n\nAsk me about algorithms, system design, or code optimization!",
       timestamp: new Date(),
       suggestions: [
-        "How to optimize loops?",
-        "Which data structure is most efficient?",
-        "How to reduce memory usage?"
+        "How to optimize a nested loop?",
+        "Explain Big-O complexity impact on energy.",
+        "Best practices for sustainable web development?"
       ]
     }
   ])
@@ -92,11 +92,18 @@ const Chatbot: React.FC = () => {
   return (
     <div className="space-y-6">
       <FadeInUp>
-        <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg p-6 text-white">
-          <h1 className="text-3xl font-bold mb-2">AI Chatbot - Green Coding Advisor</h1>
-          <p className="text-green-100">
-            Ask me anything about sustainable coding practices, optimization, and green coding
-          </p>
+        <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg p-6 text-white shadow-lg">
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">Green Coding Architect</h1>
+              <p className="text-green-100">
+                AI-Powered Sustainable Software Engineering Advisor
+              </p>
+            </div>
+            <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-sm">
+              Powered by LLaMA-2
+            </span>
+          </div>
         </div>
       </FadeInUp>
 
@@ -112,49 +119,46 @@ const Chatbot: React.FC = () => {
                 transition={{ duration: 0.3 }}
                 className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-              <div
-                className={`max-w-[70%] rounded-lg p-4 ${
-                  message.type === 'user'
+                <div
+                  className={`max-w-[70%] rounded-lg p-4 ${message.type === 'user'
                     ? 'bg-emerald-600 text-white'
                     : 'bg-gray-100 dark:bg-slate-700 text-gray-900 dark:text-white'
-                }`}
-              >
-                <div className="whitespace-pre-wrap">{message.content}</div>
-                {message.suggestions && message.suggestions.length > 0 && (
-                  <div className="mt-3 space-y-2">
-                    <p className="text-sm font-medium opacity-75">Suggested questions:</p>
-                    {message.suggestions.map((suggestion, index) => (
-                      <button
-                        key={index}
-                        onClick={() => handleSuggestionClick(suggestion)}
-                        className={`block text-sm p-2 rounded ${
-                          message.type === 'user'
+                    }`}
+                >
+                  <div className="whitespace-pre-wrap">{message.content}</div>
+                  {message.suggestions && message.suggestions.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      <p className="text-sm font-medium opacity-75">Suggested questions:</p>
+                      {message.suggestions.map((suggestion, index) => (
+                        <button
+                          key={index}
+                          onClick={() => handleSuggestionClick(suggestion)}
+                          className={`block text-sm p-2 rounded ${message.type === 'user'
                             ? 'bg-emerald-700 hover:bg-emerald-800'
                             : 'bg-white dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-gray-300'
-                        }`}
-                      >
-                        {suggestion}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {message.relatedTopics && message.relatedTopics.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {message.relatedTopics.map((topic, index) => (
-                      <span
-                        key={index}
-                        className={`text-xs px-2 py-1 rounded ${
-                          message.type === 'user'
+                            }`}
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {message.relatedTopics && message.relatedTopics.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {message.relatedTopics.map((topic, index) => (
+                        <span
+                          key={index}
+                          className={`text-xs px-2 py-1 rounded ${message.type === 'user'
                             ? 'bg-emerald-700'
                             : 'bg-gray-200 dark:bg-slate-600 text-gray-600 dark:text-gray-300'
-                        }`}
-                      >
-                        {topic.replace('_', ' ')}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
+                            }`}
+                        >
+                          {topic.replace('_', ' ')}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </motion.div>
             ))}
           </AnimatePresence>

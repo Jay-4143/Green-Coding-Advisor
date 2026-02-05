@@ -12,6 +12,7 @@ import Settings from './components/Settings'
 import Profile from './components/Profile'
 import AdminDashboard from './components/AdminDashboard'
 import VerifyEmail from './components/VerifyEmail'
+import VerifyOtp from './components/VerifyOtp'
 import ResetPassword from './components/ResetPassword'
 import ForgotPassword from './components/ForgotPassword'
 import Home from './components/Home'
@@ -22,10 +23,9 @@ import LoginModal from './components/LoginModal'
 import { useTheme } from './contexts/ThemeContext'
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-  `px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-    isActive 
-      ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-semibold' 
-      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-emerald-600 dark:hover:text-emerald-400'
+  `px-4 py-2 rounded-md text-sm font-medium transition-colors ${isActive
+    ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-semibold'
+    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-emerald-600 dark:hover:text-emerald-400'
   }`
 
 function Layout({ children }: { children: React.ReactNode }) {
@@ -96,6 +96,19 @@ function Layout({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  // If user just reset password, show login modal once on landing
+  React.useEffect(() => {
+    try {
+      const flag = localStorage.getItem('show_login_after_reset')
+      if (flag === '1') {
+        localStorage.removeItem('show_login_after_reset')
+        setShowLoginModal(true)
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, [location])
+
   function onLogout() {
     clearTokens()
     setAuthed(false)
@@ -133,22 +146,21 @@ function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-gray-100">
       {/* Modern Navbar with Dynamic Background */}
-      <header className={`sticky top-0 z-40 relative transition-all duration-300 ${
-        isPublicPage && !isScrolled 
-          ? '' 
-          : 'bg-white dark:bg-slate-800 shadow-md'
-      }`} style={isPublicPage && !isScrolled ? { 
-        border: 'none', 
-        borderBottom: 'none', 
-        borderTop: 'none',
-        boxShadow: 'none', 
-        outline: 'none',
-        marginBottom: 0,
-        paddingBottom: 0
-      } : {}}>
+      <header className={`sticky top-0 z-40 relative transition-all duration-300 ${isPublicPage && !isScrolled
+        ? ''
+        : 'bg-white dark:bg-slate-800 shadow-md'
+        }`} style={isPublicPage && !isScrolled ? {
+          border: 'none',
+          borderBottom: 'none',
+          borderTop: 'none',
+          boxShadow: 'none',
+          outline: 'none',
+          marginBottom: 0,
+          paddingBottom: 0
+        } : {}}>
         {/* Transparent background with gradient overlay when at top of page */}
         {isPublicPage && !isScrolled && (
-          <div 
+          <div
             className="absolute inset-0 z-0"
             style={{
               backgroundImage: `url('${navbarBgImage}')`,
@@ -160,15 +172,15 @@ function Layout({ children }: { children: React.ReactNode }) {
             <div className="absolute inset-0 bg-gradient-to-br from-slate-900/90 via-slate-800/90 to-slate-900/90"></div>
           </div>
         )}
-        
+
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
-            <Link to="/" className="flex items-center space-x-3 z-20">
-              <img 
-                src="/images/logo.png" 
-                alt="Green Coding Advisor Logo" 
-                className="h-10 w-auto"
+            <Link to="/" className="flex items-center space-x-2 z-20">
+              <img
+                src="/images/logo1.png"
+                alt="Green Coding Advisor Logo"
+                className="h-20 w-auto"
                 onError={(e) => {
                   // Fallback to gradient if image fails to load
                   const target = e.target as HTMLImageElement
@@ -181,97 +193,90 @@ function Layout({ children }: { children: React.ReactNode }) {
                 <span className="text-white font-bold text-xl">G</span>
               </div>
               <div>
-                <h1 className={`text-xl font-bold ${
-                  isPublicPage && !isScrolled 
-                    ? 'text-white drop-shadow-lg' 
-                    : 'text-gray-900 dark:text-white'
-                }`}>Green Coding Advisor</h1>
-                <p className={`text-xs hidden sm:block ${
-                  isPublicPage && !isScrolled 
-                    ? 'text-emerald-100 drop-shadow-md' 
-                    : 'text-gray-500 dark:text-gray-400'
-                }`}>Sustainable Coding Platform</p>
+                <h1 className={`text-xl font-bold ${isPublicPage && !isScrolled
+                  ? 'text-white drop-shadow-lg'
+                  : 'text-gray-900 dark:text-white'
+                  }`}>Green Coding Advisor</h1>
+                <p className={`text-xs hidden sm:block ${isPublicPage && !isScrolled
+                  ? 'text-emerald-100 drop-shadow-md'
+                  : 'text-gray-500 dark:text-gray-400'
+                  }`}>Sustainable Coding Platform</p>
               </div>
             </Link>
 
             {/* Desktop Navigation - Centered */}
             <nav className="hidden md:flex items-center space-x-1 absolute left-1/2 transform -translate-x-1/2">
-              <NavLink 
-                to="/" 
-                className={({ isActive }) => 
-                  `px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isActive 
-                      ? (isPublicPage && !isScrolled)
-                        ? 'bg-white/20 backdrop-blur-sm text-white font-semibold'
-                        : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-semibold'
-                      : (isPublicPage && !isScrolled)
-                        ? 'text-white/90 hover:bg-white/20 hover:text-white backdrop-blur-sm'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-emerald-600 dark:hover:text-emerald-400'
+              <NavLink
+                to="/"
+                className={({ isActive }) =>
+                  `px-4 py-2 rounded-md text-sm font-medium transition-colors ${isActive
+                    ? (isPublicPage && !isScrolled)
+                      ? 'bg-white/20 backdrop-blur-sm text-white font-semibold'
+                      : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-semibold'
+                    : (isPublicPage && !isScrolled)
+                      ? 'text-white/90 hover:bg-white/20 hover:text-white backdrop-blur-sm'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-emerald-600 dark:hover:text-emerald-400'
                   }`
                 }
               >
                 Home
               </NavLink>
-              <NavLink 
-                to="/about" 
-                className={({ isActive }) => 
-                  `px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isActive 
-                      ? (isPublicPage && !isScrolled)
-                        ? 'bg-white/20 backdrop-blur-sm text-white font-semibold'
-                        : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-semibold'
-                      : (isPublicPage && !isScrolled)
-                        ? 'text-white/90 hover:bg-white/20 hover:text-white backdrop-blur-sm'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-emerald-600 dark:hover:text-emerald-400'
+              <NavLink
+                to="/about"
+                className={({ isActive }) =>
+                  `px-4 py-2 rounded-md text-sm font-medium transition-colors ${isActive
+                    ? (isPublicPage && !isScrolled)
+                      ? 'bg-white/20 backdrop-blur-sm text-white font-semibold'
+                      : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-semibold'
+                    : (isPublicPage && !isScrolled)
+                      ? 'text-white/90 hover:bg-white/20 hover:text-white backdrop-blur-sm'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-emerald-600 dark:hover:text-emerald-400'
                   }`
                 }
               >
                 About
               </NavLink>
-              <NavLink 
-                to="/services" 
-                className={({ isActive }) => 
-                  `px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isActive 
-                      ? (isPublicPage && !isScrolled)
-                        ? 'bg-white/20 backdrop-blur-sm text-white font-semibold'
-                        : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-semibold'
-                      : (isPublicPage && !isScrolled)
-                        ? 'text-white/90 hover:bg-white/20 hover:text-white backdrop-blur-sm'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-emerald-600 dark:hover:text-emerald-400'
+              <NavLink
+                to="/services"
+                className={({ isActive }) =>
+                  `px-4 py-2 rounded-md text-sm font-medium transition-colors ${isActive
+                    ? (isPublicPage && !isScrolled)
+                      ? 'bg-white/20 backdrop-blur-sm text-white font-semibold'
+                      : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-semibold'
+                    : (isPublicPage && !isScrolled)
+                      ? 'text-white/90 hover:bg-white/20 hover:text-white backdrop-blur-sm'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-emerald-600 dark:hover:text-emerald-400'
                   }`
                 }
               >
                 Services
               </NavLink>
-              <NavLink 
-                to="/contact" 
-                className={({ isActive }) => 
-                  `px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isActive 
-                      ? (isPublicPage && !isScrolled)
-                        ? 'bg-white/20 backdrop-blur-sm text-white font-semibold'
-                        : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-semibold'
-                      : (isPublicPage && !isScrolled)
-                        ? 'text-white/90 hover:bg-white/20 hover:text-white backdrop-blur-sm'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-emerald-600 dark:hover:text-emerald-400'
+              <NavLink
+                to="/contact"
+                className={({ isActive }) =>
+                  `px-4 py-2 rounded-md text-sm font-medium transition-colors ${isActive
+                    ? (isPublicPage && !isScrolled)
+                      ? 'bg-white/20 backdrop-blur-sm text-white font-semibold'
+                      : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-semibold'
+                    : (isPublicPage && !isScrolled)
+                      ? 'text-white/90 hover:bg-white/20 hover:text-white backdrop-blur-sm'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-emerald-600 dark:hover:text-emerald-400'
                   }`
                 }
               >
                 Contact
               </NavLink>
             </nav>
-              
+
             {/* Profile + Menu (Desktop) - Swapped positions */}
             {authed ? (
               <div className="flex items-center space-x-2 relative z-20">
                 <button
                   onClick={() => setShowUserMenu(!showUserMenu)}
-                  className={`p-2 rounded-full transition-colors ${
-                    (isPublicPage && !isScrolled)
-                      ? 'hover:bg-white/20 text-white' 
-                      : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
-                  }`}
+                  className={`p-2 rounded-full transition-colors ${(isPublicPage && !isScrolled)
+                    ? 'hover:bg-white/20 text-white'
+                    : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+                    }`}
                   title="Menu"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -280,11 +285,10 @@ function Layout({ children }: { children: React.ReactNode }) {
                 </button>
                 <Link
                   to="/profile"
-                  className={`p-2 rounded-full transition-colors ${
-                    (isPublicPage && !isScrolled)
-                      ? 'hover:bg-white/20 text-white' 
-                      : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
-                  }`}
+                  className={`p-2 rounded-full transition-colors ${(isPublicPage && !isScrolled)
+                    ? 'hover:bg-white/20 text-white'
+                    : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+                    }`}
                   title="Profile"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -313,11 +317,10 @@ function Layout({ children }: { children: React.ReactNode }) {
             ) : (
               <button
                 onClick={() => setShowLoginModal(true)}
-                className={`z-20 px-6 py-2 rounded-lg font-semibold transition-all shadow-lg hover:shadow-xl ${
-                  (isPublicPage && !isScrolled)
-                    ? 'bg-white/20 backdrop-blur-md text-white hover:bg-white/30 border-2 border-white/30'
-                    : 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:from-emerald-700 hover:to-teal-700'
-                }`}
+                className={`z-20 px-6 py-2 rounded-lg font-semibold transition-all shadow-lg hover:shadow-xl ${(isPublicPage && !isScrolled)
+                  ? 'bg-white/20 backdrop-blur-md text-white hover:bg-white/30 border-2 border-white/30'
+                  : 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:from-emerald-700 hover:to-teal-700'
+                  }`}
               >
                 Login
               </button>
@@ -329,11 +332,10 @@ function Layout({ children }: { children: React.ReactNode }) {
                 <>
                   <button
                     onClick={() => setShowMobileMenu(!showMobileMenu)}
-                    className={`p-2 rounded-md transition-colors ${
-                      (isPublicPage && !isScrolled)
-                        ? 'hover:bg-white/20 text-white' 
-                        : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
-                    }`}
+                    className={`p-2 rounded-md transition-colors ${(isPublicPage && !isScrolled)
+                      ? 'hover:bg-white/20 text-white'
+                      : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+                      }`}
                   >
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -341,11 +343,10 @@ function Layout({ children }: { children: React.ReactNode }) {
                   </button>
                   <Link
                     to="/profile"
-                    className={`p-2 rounded-md transition-colors ${
-                      (isPublicPage && !isScrolled)
-                        ? 'hover:bg-white/20 text-white' 
-                        : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
-                    }`}
+                    className={`p-2 rounded-md transition-colors ${(isPublicPage && !isScrolled)
+                      ? 'hover:bg-white/20 text-white'
+                      : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+                      }`}
                     title="Profile"
                   >
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -356,11 +357,10 @@ function Layout({ children }: { children: React.ReactNode }) {
               ) : (
                 <button
                   onClick={() => setShowLoginModal(true)}
-                  className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
-                    (isPublicPage && !isScrolled)
-                      ? 'bg-white/20 backdrop-blur-md text-white hover:bg-white/30 border-2 border-white/30'
-                      : 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white'
-                  }`}
+                  className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${(isPublicPage && !isScrolled)
+                    ? 'bg-white/20 backdrop-blur-md text-white hover:bg-white/30 border-2 border-white/30'
+                    : 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white'
+                    }`}
                 >
                   Login
                 </button>
@@ -370,58 +370,48 @@ function Layout({ children }: { children: React.ReactNode }) {
 
           {/* Mobile Menu */}
           {showMobileMenu && authed && (
-            <div className={`md:hidden py-4 border-t ${
-              (isPublicPage && !isScrolled)
-                ? 'border-white/20' 
-                : 'border-gray-200 dark:border-gray-700'
-            }`}>
+            <div className={`md:hidden py-4 border-t ${(isPublicPage && !isScrolled)
+              ? 'border-white/20'
+              : 'border-gray-200 dark:border-gray-700'
+              }`}>
               <nav className="flex flex-col space-y-1">
-                <Link to="/dashboard" className={`px-4 py-2 text-sm rounded-md ${
-                  (isPublicPage && !isScrolled)
-                    ? 'text-white/90 hover:bg-white/20'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}>Dashboard</Link>
-                <Link to="/submit" className={`px-4 py-2 text-sm rounded-md ${
-                  (isPublicPage && !isScrolled)
-                    ? 'text-white/90 hover:bg-white/20'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}>Submit Code</Link>
-                <Link to="/analysis" className={`px-4 py-2 text-sm rounded-md ${
-                  (isPublicPage && !isScrolled)
-                    ? 'text-white/90 hover:bg-white/20'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}>Analysis</Link>
-                <Link to="/leaderboard" className={`px-4 py-2 text-sm rounded-md ${
-                  (isPublicPage && !isScrolled)
-                    ? 'text-white/90 hover:bg-white/20'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}>Leaderboard</Link>
-                <Link to="/badges" className={`px-4 py-2 text-sm rounded-md ${
-                  (isPublicPage && !isScrolled)
-                    ? 'text-white/90 hover:bg-white/20'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}>Badges</Link>
-                <Link to="/teams" className={`px-4 py-2 text-sm rounded-md ${
-                  (isPublicPage && !isScrolled)
-                    ? 'text-white/90 hover:bg-white/20'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}>Teams</Link>
-                <Link to="/chatbot" className={`px-4 py-2 text-sm rounded-md ${
-                  (isPublicPage && !isScrolled)
-                    ? 'text-white/90 hover:bg-white/20'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}>Chatbot</Link>
-                <Link to="/settings" className={`px-4 py-2 text-sm rounded-md ${
-                  (isPublicPage && !isScrolled)
-                    ? 'text-white/90 hover:bg-white/20'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}>Settings</Link>
+                <Link to="/dashboard" className={`px-4 py-2 text-sm rounded-md ${(isPublicPage && !isScrolled)
+                  ? 'text-white/90 hover:bg-white/20'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}>Dashboard</Link>
+                <Link to="/submit" className={`px-4 py-2 text-sm rounded-md ${(isPublicPage && !isScrolled)
+                  ? 'text-white/90 hover:bg-white/20'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}>Submit Code</Link>
+                <Link to="/analysis" className={`px-4 py-2 text-sm rounded-md ${(isPublicPage && !isScrolled)
+                  ? 'text-white/90 hover:bg-white/20'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}>Analysis</Link>
+                <Link to="/leaderboard" className={`px-4 py-2 text-sm rounded-md ${(isPublicPage && !isScrolled)
+                  ? 'text-white/90 hover:bg-white/20'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}>Leaderboard</Link>
+                <Link to="/badges" className={`px-4 py-2 text-sm rounded-md ${(isPublicPage && !isScrolled)
+                  ? 'text-white/90 hover:bg-white/20'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}>Badges</Link>
+                <Link to="/teams" className={`px-4 py-2 text-sm rounded-md ${(isPublicPage && !isScrolled)
+                  ? 'text-white/90 hover:bg-white/20'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}>Teams</Link>
+                <Link to="/chatbot" className={`px-4 py-2 text-sm rounded-md ${(isPublicPage && !isScrolled)
+                  ? 'text-white/90 hover:bg-white/20'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}>Chatbot</Link>
+                <Link to="/settings" className={`px-4 py-2 text-sm rounded-md ${(isPublicPage && !isScrolled)
+                  ? 'text-white/90 hover:bg-white/20'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}>Settings</Link>
                 {userRole === 'admin' && (
-                  <Link to="/admin" className={`px-4 py-2 text-sm font-semibold rounded-md ${
-                    (isPublicPage && !isScrolled)
-                      ? 'text-emerald-200 hover:bg-white/20'
-                      : 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
-                  }`}>Admin Dashboard</Link>
+                  <Link to="/admin" className={`px-4 py-2 text-sm font-semibold rounded-md ${(isPublicPage && !isScrolled)
+                    ? 'text-emerald-200 hover:bg-white/20'
+                    : 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
+                    }`}>Admin Dashboard</Link>
                 )}
               </nav>
             </div>
@@ -430,7 +420,7 @@ function Layout({ children }: { children: React.ReactNode }) {
       </header>
 
       <main>
-          {children}
+        {children}
       </main>
 
       {/* Login Modal */}
@@ -456,7 +446,7 @@ function Page({ title, children }: { title: string; children?: React.ReactNode }
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="rounded-lg border bg-white p-6 shadow-sm">
         <h2 className="text-2xl font-bold mb-4 text-gray-900">{title}</h2>
-      {children}
+        {children}
       </div>
     </div>
   )
@@ -468,7 +458,7 @@ function Analysis() {
     try {
       const raw = localStorage.getItem('last_analysis')
       if (raw) setData(JSON.parse(raw))
-    } catch {}
+    } catch { }
   }, [])
 
   if (!data) {
@@ -590,7 +580,7 @@ function Analysis() {
         {data.optimizedCode && data.originalCode ? (
           <div className="mt-6">
             <h4 className="text-lg font-semibold text-gray-900 mb-4">Full Code Optimization</h4>
-            
+
             {/* Comparison Table */}
             {data.comparisonTable && (
               <div className="mb-6 overflow-x-auto">
@@ -668,7 +658,7 @@ function Analysis() {
                 // Use originalCode if available, otherwise try to get code from submission ID
                 let codeToUse = data.originalCode
                 let languageToUse = data.language || data.detectedLanguage || 'python'
-                
+
                 // If no original code but we have a submission ID, try to fetch from submission
                 if (!codeToUse && data.id) {
                   try {
@@ -679,12 +669,12 @@ function Analysis() {
                     console.warn('Could not fetch submission:', e)
                   }
                 }
-                
+
                 if (!codeToUse) {
                   alert('Code not available. Please submit code again to generate a report.')
                   return
                 }
-                
+
                 // Generate comprehensive report using optimization endpoint
                 const response = await apiClient.post(
                   `/submissions/optimize/report?format=pdf`,
@@ -697,7 +687,7 @@ function Analysis() {
                     responseType: 'blob'
                   }
                 )
-                
+
                 // Download the PDF
                 const url = window.URL.createObjectURL(new Blob([response.data]))
                 const link = document.createElement('a')
@@ -722,7 +712,7 @@ function Analysis() {
                 // Use originalCode if available, otherwise try to get code from submission ID
                 let codeToUse = data.originalCode
                 let languageToUse = data.language || data.detectedLanguage || 'python'
-                
+
                 // If no original code but we have a submission ID, try to fetch from submission
                 if (!codeToUse && data.id) {
                   try {
@@ -733,12 +723,12 @@ function Analysis() {
                     console.warn('Could not fetch submission:', e)
                   }
                 }
-                
+
                 if (!codeToUse) {
                   alert('Code not available. Please submit code again to generate a report.')
                   return
                 }
-                
+
                 // Generate HTML report
                 const response = await apiClient.post(
                   `/submissions/optimize/report?format=html`,
@@ -751,7 +741,7 @@ function Analysis() {
                     responseType: 'blob'
                   }
                 )
-                
+
                 // Download the HTML
                 const url = window.URL.createObjectURL(new Blob([response.data]))
                 const link = document.createElement('a')
@@ -781,7 +771,7 @@ function Analysis() {
                       responseType: 'blob'
                     }
                   )
-                  
+
                   // Download the PDF
                   const url = window.URL.createObjectURL(new Blob([response.data]))
                   const link = document.createElement('a')
@@ -834,6 +824,7 @@ export default function App() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/verify-otp" element={<VerifyOtp />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="*" element={<NotFound />} />

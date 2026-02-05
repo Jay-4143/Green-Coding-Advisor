@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import apiClient from '../api/client'
-import { 
-  Chart as ChartJS, 
-  CategoryScale, 
-  LinearScale, 
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
   BarElement,
-  Title, 
-  Tooltip, 
+  Title,
+  Tooltip,
   Legend,
   ArcElement
 } from 'chart.js'
@@ -53,22 +53,58 @@ interface User {
   submission_count?: number
 }
 
+
+interface Submission {
+  id: number
+  user_id: number
+  language: string
+  status: string
+  green_score: number | null
+  created_at: string
+  filename?: string
+}
+
+interface Team {
+  id: number
+  name: string
+  description?: string
+  created_by: number
+  created_at: string
+  member_count?: number
+  project_count?: number
+}
+
 const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'submissions' | 'teams'>('overview')
   const [stats, setStats] = useState<SystemStats | null>(null)
-  const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Users State
+  const [users, setUsers] = useState<User[]>([])
   const [userSearch, setUserSearch] = useState('')
   const [selectedRole, setSelectedRole] = useState<string>('')
   const [usersPage, setUsersPage] = useState(0)
   const [usersTotal, setUsersTotal] = useState(0)
 
+  // Submissions State
+  const [submissions, setSubmissions] = useState<Submission[]>([])
+  const [submissionsPage, setSubmissionsPage] = useState(0)
+  const [submissionsTotal, setSubmissionsTotal] = useState(0)
+  const [submissionStatus, setSubmissionStatus] = useState<string>('')
+
+  // Teams State
+  const [teams, setTeams] = useState<Team[]>([])
+
   useEffect(() => {
     fetchStats()
     if (activeTab === 'users') {
       fetchUsers()
+    } else if (activeTab === 'submissions') {
+      fetchSubmissions()
+    } else if (activeTab === 'teams') {
+      fetchTeams()
     }
-  }, [activeTab, userSearch, selectedRole, usersPage])
+  }, [activeTab, userSearch, selectedRole, usersPage, submissionsPage, submissionStatus])
 
   const fetchStats = async () => {
     try {
@@ -87,7 +123,7 @@ const AdminDashboard: React.FC = () => {
       const params: any = { skip: usersPage * 50, limit: 50 }
       if (userSearch) params.search = userSearch
       if (selectedRole) params.role = selectedRole
-      
+
       const response = await apiClient.get('/admin/users', { params })
       setUsers(response.data.users || [])
       setUsersTotal(response.data.total || 0)
@@ -98,10 +134,38 @@ const AdminDashboard: React.FC = () => {
     }
   }
 
+  const fetchSubmissions = async () => {
+    try {
+      setLoading(true)
+      const params: any = { skip: submissionsPage * 50, limit: 50 }
+      if (submissionStatus) params.status = submissionStatus
+
+      const response = await apiClient.get('/admin/submissions', { params })
+      setSubmissions(response.data.submissions || [])
+      setSubmissionsTotal(response.data.total || 0)
+    } catch (error) {
+      console.error('Error fetching submissions:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchTeams = async () => {
+    try {
+      setLoading(true)
+      const response = await apiClient.get('/admin/teams')
+      setTeams(response.data.teams || [])
+    } catch (error) {
+      console.error('Error fetching teams:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleStatusToggle = async (userId: number, currentStatus: boolean) => {
     const action = currentStatus ? 'deactivate' : 'activate'
     if (!confirm(`${action.charAt(0).toUpperCase() + action.slice(1)} this user?`)) return
-    
+
     try {
       await apiClient.put(`/admin/users/${userId}/status`, null, {
         params: { is_active: !currentStatus }
@@ -116,7 +180,7 @@ const AdminDashboard: React.FC = () => {
 
   const handleDeleteUser = async (userId: number, username: string) => {
     if (!confirm(`⚠️ WARNING: Delete user "${username}"? This action cannot be undone!`)) return
-    
+
     try {
       await apiClient.delete(`/admin/users/${userId}`)
       alert('User deleted successfully!')
@@ -129,13 +193,26 @@ const AdminDashboard: React.FC = () => {
 
   const handleInitializeBadges = async () => {
     if (!confirm('Initialize default badges?')) return
-    
+
     try {
       await apiClient.post('/badges/initialize')
       alert('Badges initialized successfully!')
       fetchStats()
     } catch (error: any) {
       alert(error?.response?.data?.detail || 'Failed to initialize badges')
+    }
+  }
+
+  const handleDeleteTeam = async (teamId: number, teamName: string) => {
+    if (!confirm(`⚠️ WARNING: Delete team "${teamName}"? This will remove all members and projects associated with the team!`)) return
+
+    try {
+      await apiClient.delete(`/admin/teams/${teamId}`)
+      alert('Team deleted successfully!')
+      fetchTeams()
+      fetchStats()
+    } catch (error: any) {
+      alert(error?.response?.data?.detail || 'Failed to delete team')
     }
   }
 
@@ -169,11 +246,11 @@ const AdminDashboard: React.FC = () => {
       <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <img 
-                src="/images/logo.png" 
-                alt="Admin Logo" 
-                className="h-16 w-auto bg-white/20 rounded-lg p-2"
+            <div className="flex items-center gap-2">
+              <img
+                src="/images/logo1.png"
+                alt="Admin Logo"
+                className="h-24 w-auto bg-white/20 rounded-lg p-2"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement
                   target.style.display = 'none'
@@ -211,11 +288,10 @@ const AdminDashboard: React.FC = () => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === tab.id
-                      ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-                  }`}
+                  className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.id
+                    ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                    }`}
                 >
                   <span className="mr-2">{tab.icon}</span>
                   {tab.label}
@@ -296,7 +372,7 @@ const AdminDashboard: React.FC = () => {
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Account Status</h3>
                 {accountStatusChartData && (
-                  <Bar 
+                  <Bar
                     data={accountStatusChartData}
                     options={{
                       responsive: true,
@@ -426,11 +502,10 @@ const AdminDashboard: React.FC = () => {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                            user.is_active 
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                              : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-                          }`}>
+                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${user.is_active
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                            : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                            }`}>
                             {user.is_active ? 'Active' : 'Inactive'}
                           </span>
                           {!user.is_verified && (
@@ -445,11 +520,10 @@ const AdminDashboard: React.FC = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                           <button
                             onClick={() => handleStatusToggle(user.id, user.is_active)}
-                            className={`px-3 py-1 rounded text-xs ${
-                              user.is_active
-                                ? 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400'
-                                : 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400'
-                            }`}
+                            className={`px-3 py-1 rounded text-xs ${user.is_active
+                              ? 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400'
+                              : 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400'
+                              }`}
                           >
                             {user.is_active ? 'Deactivate' : 'Activate'}
                           </button>
@@ -491,15 +565,163 @@ const AdminDashboard: React.FC = () => {
 
         {/* Submissions Tab */}
         {activeTab === 'submissions' && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
-            <p className="text-gray-600 dark:text-gray-400">Submissions management coming soon...</p>
+          <div className="space-y-6">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+              <div className="flex items-center gap-4">
+                <select
+                  value={submissionStatus}
+                  onChange={(e) => { setSubmissionStatus(e.target.value); setSubmissionsPage(0); }}
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="">All Statuses</option>
+                  <option value="completed">Completed</option>
+                  <option value="pending">Pending</option>
+                  <option value="failed">Failed</option>
+                </select>
+                <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                  Total: {submissionsTotal} submissions
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead className="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">ID</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Language</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Files</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Green Score</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {submissions.map(sub => (
+                      <tr key={sub.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                          #{sub.id}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300 capitalize">
+                            {sub.language}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                          {sub.filename || 'code.txt'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {sub.green_score ? (
+                            <span className={`font-bold ${sub.green_score >= 80 ? 'text-green-600' :
+                              sub.green_score >= 60 ? 'text-yellow-600' : 'text-red-600'
+                              }`}>
+                              {sub.green_score.toFixed(1)}
+                            </span>
+                          ) : '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${sub.status === 'completed'
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                            : sub.status === 'pending'
+                              ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+                              : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                            }`}>
+                            {sub.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                          {new Date(sub.created_at).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {/* Pagination for Submissions */}
+              <div className="bg-gray-50 dark:bg-gray-700 px-6 py-3 flex items-center justify-between">
+                <button
+                  onClick={() => setSubmissionsPage(p => Math.max(0, p - 1))}
+                  disabled={submissionsPage === 0}
+                  className="px-4 py-2 bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg disabled:opacity-50"
+                >
+                  Previous
+                </button>
+                <span className="text-sm text-gray-700 dark:text-gray-300">
+                  Page {submissionsPage + 1} of {Math.ceil(submissionsTotal / 50) || 1}
+                </span>
+                <button
+                  onClick={() => setSubmissionsPage(p => p + 1)}
+                  disabled={(submissionsPage + 1) * 50 >= submissionsTotal}
+                  className="px-4 py-2 bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
         {/* Teams Tab */}
         {activeTab === 'teams' && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
-            <p className="text-gray-600 dark:text-gray-400">Teams management coming soon...</p>
+          <div className="space-y-6">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead className="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Team Name</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Members</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Projects</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Created</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {teams.map(team => (
+                      <tr key={team.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div>
+                            <div className="text-sm font-bold text-gray-900 dark:text-white">{team.name}</div>
+                            {team.description && (
+                              <div className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-xs">{team.description}</div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded dark:bg-blue-200 dark:text-blue-800">
+                            {team.member_count || 0} Members
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="bg-purple-100 text-purple-800 text-xs font-semibold px-2.5 py-0.5 rounded dark:bg-purple-200 dark:text-purple-800">
+                            {team.project_count || 0} Projects
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                          {new Date(team.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <button
+                            onClick={() => handleDeleteTeam(team.id, team.name)}
+                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {teams.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                          No teams found.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
       </div>

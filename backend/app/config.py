@@ -51,6 +51,9 @@ class Settings(BaseSettings):
     environment: str = "development"
     debug: bool = True
     
+    # Frontend URL for links in emails
+    frontend_url: str = "http://localhost:5173"
+    
     # CORS Configuration
     allowed_origins: str = "http://localhost:3000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000"
     

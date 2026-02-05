@@ -52,7 +52,8 @@ class EmailService:
     
     def send_verification_email(self, to_email: str, verification_token: str, username: str) -> bool:
         """Send email verification email"""
-        verification_url = f"http://localhost:5173/verify-email?token={verification_token}"
+        frontend = getattr(settings, "frontend_url", "http://localhost:5173").rstrip("/")
+        verification_url = f"{frontend}/verify-email?token={verification_token}"
         
         subject = "Verify your Green Coding Advisor account"
         body = f"""
@@ -85,7 +86,8 @@ Green Coding Advisor Team
     
     def send_password_reset_email(self, to_email: str, reset_token: str, username: str) -> bool:
         """Send password reset email"""
-        reset_url = f"http://localhost:5173/reset-password?token={reset_token}"
+        frontend = getattr(settings, "frontend_url", "http://localhost:5173").rstrip("/")
+        reset_url = f"{frontend}/reset-password?token={reset_token}"
         
         subject = "Reset your Green Coding Advisor password"
         body = f"""
@@ -113,6 +115,37 @@ Green Coding Advisor Team
     <p><a href="{reset_url}">Reset Password</a></p>
     <p>This link will expire in 1 hour.</p>
     <p>If you didn't request a password reset, please ignore this email.</p>
+    <p>Best regards,<br>Green Coding Advisor Team</p>
+</body>
+</html>
+"""
+        return self.send_email(to_email, subject, body, html_body)
+
+    def send_signup_otp_email(self, to_email: str, otp: str, username: str, expiry_minutes: int) -> bool:
+        """Send signup OTP email"""
+        subject = "Your Green Coding Advisor verification code"
+        body = f"""
+Hello {username},
+
+Use the following code to verify your account:
+{otp}
+
+This code expires in {expiry_minutes} minutes.
+
+If you didn't create an account, please ignore this email.
+
+Best regards,
+Green Coding Advisor Team
+"""
+        html_body = f"""
+<html>
+<body>
+    <h2>Verify your account</h2>
+    <p>Hello {username},</p>
+    <p>Use the following code to verify your account:</p>
+    <p style="font-size:20px;font-weight:bold;letter-spacing:4px;">{otp}</p>
+    <p>This code expires in {expiry_minutes} minutes.</p>
+    <p>If you didn't create an account, please ignore this email.</p>
     <p>Best regards,<br>Green Coding Advisor Team</p>
 </body>
 </html>
