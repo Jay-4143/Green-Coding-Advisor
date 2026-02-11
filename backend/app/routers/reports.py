@@ -327,6 +327,7 @@ async def download_metrics_csv(
         details={"user_id": target_user_id}
     )
     
+    
     return StreamingResponse(
         csv_buffer,
         media_type="text/csv",
@@ -334,3 +335,103 @@ async def download_metrics_csv(
             "Content-Disposition": f"attachment; filename=green-coding-metrics-{datetime.now().strftime('%Y%m%d')}.csv"
         }
     )
+
+
+@router.post("/test-email")
+async def send_test_report_email(
+    current_user: User = Depends(get_current_active_user)
+):
+    """Send a test email to the current user"""
+    from ..email_service import email_service
+    
+    email_service.send_email(
+        to_email=current_user.email,
+        subject="Test Report from Green Coding Advisor",
+        body=f"Hello {current_user.username},\n\nThis is a test email to verify your settings. If you received this, your email configuration is working correctly.\n\nBest regards,\nGreen Coding Advisor Team",
+        html_body=f"""
+<html>
+<body>
+    <h2>Test Email</h2>
+    <p>Hello <strong>{current_user.username}</strong>,</p>
+    <p>This is a test email to verify your settings. If you received this, your email configuration is working correctly.</p>
+    <br>
+    <p>Best regards,</p>
+    <p>Green Coding Advisor Team</p>
+</body>
+</html>
+"""
+    )
+    
+
+@router.post("/weekly-email")
+async def send_weekly_email(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncIOMotorDatabase = Depends(get_mongo_db)
+):
+    """Generate and send weekly report email to the current user"""
+    from ..email_service import email_service
+    from datetime import timedelta
+    
+    # Calculate date range (last 7 days)
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=7)
+    
+    # Get submissions for the last week
+    cursor = db["submissions"].find({
+        "user_id": current_user.id,
+        "status": "completed",
+        "created_at": {"$gte": start_date, "$lte": end_date}
+    }).sort("created_at", -1)
+    
+    submissions = await cursor.to_list(length=None)
+    
+    # Calculate stats
+    total_submissions = len(submissions)
+    green_scores = [s.get("green_score", 0) for s in submissions]
+    avg_score = sum(green_scores) / total_submissions if total_submissions else 0
+    total_co2 = sum(s.get("co2_emissions_g", 0) for s in submissions)
+    total_energy = sum(s.get("energy_consumption_wh", 0) for s in submissions)
+    
+    stats = {
+        "total_submissions": total_submissions,
+        "average_green_score": avg_score,
+        "total_co2_saved": total_co2,
+        "total_energy_saved": total_energy
+    }
+    
+    # Prepare user data
+    user_data = {
+        "username": current_user.username,
+        "email": current_user.email,
+        # TODO: update with real frontend URL from config
+        "dashboard_url": "http://localhost:5173/dashboard" 
+    }
+    
+    # Prepare recent submissions data
+    recent_submissions_data = []
+    for sub in submissions[:5]:
+        recent_submissions_data.append({
+            "filename": sub.get("filename", "code.py"),
+            "language": sub.get("language", "unknown"),
+            "green_score": sub.get("green_score", 0)
+        })
+    
+    # Generate email body
+    html_body = report_generator.generate_weekly_email_body(
+        start_date=start_date.strftime("%b %d, %Y"),
+        end_date=end_date.strftime("%b %d, %Y"),
+        user_data=user_data,
+        stats=stats,
+        recent_submissions=recent_submissions_data
+    )
+    
+    # Send email
+    email_service.send_email(
+        to_email=current_user.email,
+        subject=f"Your Weekly Green Coding Report ({start_date.strftime('%b %d')} - {end_date.strftime('%b %d')})",
+        body="Please view this email in an HTML-compatible email client to see your weekly green coding report.",
+        html_body=html_body
+    )
+    
+    return {"message": "Weekly report email sent successfully"}
+

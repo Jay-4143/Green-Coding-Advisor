@@ -115,6 +115,11 @@ class TeamCreate(TeamBase):
     pass
 
 
+class TeamMemberAdd(BaseModel):
+    email: EmailStr
+    role: str = "member"
+
+
 class TeamResponse(TeamBase):
     id: int
     created_by: int
@@ -215,7 +220,16 @@ class ChatMessage(BaseModel):
     context: Optional[Dict[str, Any]] = None
 
 
+
 class ChatResponse(BaseModel):
     answer: str
     suggestions: Optional[List[str]] = None
     related_topics: Optional[List[str]] = None
+
+
+# Contact Schemas
+class ContactRequest(BaseModel):
+    name: str
+    email: EmailStr
+    message: str
+

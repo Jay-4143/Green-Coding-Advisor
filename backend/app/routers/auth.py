@@ -378,6 +378,7 @@ async def forgot_password(email: str = Form(...), db=Depends(get_mongo_db)):
     return {"message": "If the email exists, a reset link has been sent"}
 
 
+
 @router.post("/reset-password")
 async def reset_password(
     token: str = Form(...), new_password: str = Form(...), db=Depends(get_mongo_db)
@@ -438,5 +439,36 @@ async def reset_password(
     )
     
     return {"message": "Password reset successfully"}
+
+
+@router.post("/api-key")
+async def generate_api_key(
+    current_user=Depends(get_current_active_user),
+    db=Depends(get_mongo_db)
+):
+    """Generate or retrieve API Key for the current user"""
+    # Check if user already has an API key
+    user = await db["users"].find_one({"id": current_user.id})
+    existing_key = user.get("api_key")
+    
+    if existing_key:
+        return {"api_key": existing_key}
+    
+    # Generate new key
+    new_key = f"gca_{secrets.token_urlsafe(32)}"
+    
+    await db["users"].update_one(
+        {"id": current_user.id},
+        {"$set": {"api_key": new_key}}
+    )
+    
+    green_logger.log_user_action(
+        user_id=current_user.id,
+        action="api_key_generated",
+        details={}
+    )
+    
+    return {"api_key": new_key}
+
 
 

@@ -13,7 +13,7 @@ const About: React.FC = () => {
     <div className="min-h-screen">
       {/* Hero Section with Full-Screen Background */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-        <div 
+        <div
           className="absolute inset-0 z-0"
           style={{
             backgroundImage: `url('https://images.unsplash.com/photo-1522071820081-009f0129c71c?ixlib=rb-4.0.3&auto=format&fit=crop&w=3840&q=80')`,
@@ -46,13 +46,13 @@ const About: React.FC = () => {
                   Our Mission
                 </AnimatedHeading>
                 <p className="text-lg text-gray-700 dark:text-gray-200 mb-4">
-                  At Green Coding Advisor, we believe that every line of code has an environmental impact. 
-                  Our mission is to help developers understand, measure, and reduce the carbon footprint 
+                  At Green Coding Advisor, we believe that every line of code has an environmental impact.
+                  Our mission is to help developers understand, measure, and reduce the carbon footprint
                   of their software applications.
                 </p>
                 <p className="text-lg text-gray-700 dark:text-gray-200 mb-4">
-                  Through AI-powered analysis and intelligent recommendations, we provide developers 
-                  with the tools they need to write more efficient code that consumes less energy and 
+                  Through AI-powered analysis and intelligent recommendations, we provide developers
+                  with the tools they need to write more efficient code that consumes less energy and
                   produces fewer CO₂ emissions.
                 </p>
                 <p className="text-lg text-gray-700 dark:text-gray-200">
@@ -62,9 +62,9 @@ const About: React.FC = () => {
             </FadeInUp>
             <FadeInUp delay={0.2}>
               <div className="rounded-xl overflow-hidden shadow-2xl">
-                <img 
-                  src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?ixlib=rb-4.0.3&auto=format&fit=crop&w=2015&q=80" 
-                  alt="Sustainable coding" 
+                <img
+                  src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?ixlib=rb-4.0.3&auto=format&fit=crop&w=2015&q=80"
+                  alt="Sustainable coding"
                   className="w-full h-auto"
                 />
               </div>
@@ -87,29 +87,29 @@ const About: React.FC = () => {
                 <div className="text-4xl mb-4">🌍</div>
                 <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">Sustainability</h3>
                 <p className="text-gray-700 dark:text-gray-200">
-                  We're committed to reducing the environmental impact of software development 
+                  We're committed to reducing the environmental impact of software development
                   through innovative technology and best practices.
                 </p>
               </div>
             </StaggerItem>
-            
+
             <StaggerItem>
               <div className="bg-white dark:bg-slate-800 rounded-xl p-8 shadow-lg border border-gray-200 dark:border-slate-700">
                 <div className="text-4xl mb-4">💡</div>
                 <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">Innovation</h3>
                 <p className="text-gray-700 dark:text-gray-200">
-                  We leverage cutting-edge AI and machine learning to provide accurate, 
+                  We leverage cutting-edge AI and machine learning to provide accurate,
                   actionable insights for code optimization.
                 </p>
               </div>
             </StaggerItem>
-            
+
             <StaggerItem>
               <div className="bg-white dark:bg-slate-800 rounded-xl p-8 shadow-lg border border-gray-200 dark:border-slate-700">
                 <div className="text-4xl mb-4">🤝</div>
                 <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">Community</h3>
                 <p className="text-gray-700 dark:text-gray-200">
-                  We believe in building a community of developers who share our vision 
+                  We believe in building a community of developers who share our vision
                   of sustainable software development.
                 </p>
               </div>
@@ -135,13 +135,13 @@ const About: React.FC = () => {
                 <div>
                   <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">Submit Your Code</h3>
                   <p className="text-gray-700 dark:text-gray-200">
-                    Upload your code files or paste code directly into our platform. 
-                    We support multiple programming languages including Python, JavaScript, Java, and C++.
+                    Upload your code files or paste code directly into our platform.
+                    We support multiple programming languages including Python, JavaScript, and Java.
                   </p>
                 </div>
               </div>
             </StaggerItem>
-            
+
             <StaggerItem>
               <div className="flex gap-6">
                 <div className="flex-shrink-0">
@@ -150,13 +150,13 @@ const About: React.FC = () => {
                 <div>
                   <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">AI Analysis</h3>
                   <p className="text-gray-700 dark:text-gray-200">
-                    Our advanced AI engine analyzes your code for energy consumption patterns, 
+                    Our advanced AI engine analyzes your code for energy consumption patterns,
                     complexity, and optimization opportunities.
                   </p>
                 </div>
               </div>
             </StaggerItem>
-            
+
             <StaggerItem>
               <div className="flex gap-6">
                 <div className="flex-shrink-0">
@@ -165,13 +165,13 @@ const About: React.FC = () => {
                 <div>
                   <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">Get Insights</h3>
                   <p className="text-gray-700 dark:text-gray-200">
-                    Receive detailed reports with green scores, energy consumption metrics, 
+                    Receive detailed reports with green scores, energy consumption metrics,
                     CO₂ emissions, and actionable optimization suggestions.
                   </p>
                 </div>
               </div>
             </StaggerItem>
-            
+
             <StaggerItem>
               <div className="flex gap-6">
                 <div className="flex-shrink-0">
@@ -180,7 +180,7 @@ const About: React.FC = () => {
                 <div>
                   <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">Track Progress</h3>
                   <p className="text-gray-700 dark:text-gray-200">
-                    Monitor your improvement over time with comprehensive dashboards, 
+                    Monitor your improvement over time with comprehensive dashboards,
                     earn badges, and compete on leaderboards.
                   </p>
                 </div>
@@ -188,8 +188,8 @@ const About: React.FC = () => {
             </StaggerItem>
           </StaggerContainer>
         </div>
-      </section>
-    </div>
+      </section >
+    </div >
   )
 }
 

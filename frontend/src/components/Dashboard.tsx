@@ -8,15 +8,15 @@ import {
   StaggerItem,
   AnimatedCard,
 } from './animations'
-import { 
-  Chart as ChartJS, 
-  CategoryScale, 
-  LinearScale, 
-  PointElement, 
-  LineElement, 
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
   BarElement,
-  Title, 
-  Tooltip, 
+  Title,
+  Tooltip,
   Legend,
   ArcElement
 } from 'chart.js'
@@ -81,7 +81,7 @@ const Dashboard: React.FC = () => {
     currentStreak: 0,
     rank: 0
   })
-  
+
   const [greenScoreHistory, setGreenScoreHistory] = useState<GreenScoreHistory[]>([])
   const [languageStats, setLanguageStats] = useState<LanguageStats[]>([])
   const [recentSubmissions, setRecentSubmissions] = useState<RecentSubmission[]>([])
@@ -105,7 +105,7 @@ const Dashboard: React.FC = () => {
         const summaryUrl = uid ? `/metrics/summary?user_id=${uid}` : '/metrics/summary'
         const summaryRes = await apiClient.get(summaryUrl)
         const s = summaryRes.data || {}
-        
+
         // Get streak info
         let streakInfo = { current_streak: 0, longest_streak: 0 }
         try {
@@ -114,7 +114,7 @@ const Dashboard: React.FC = () => {
         } catch (e) {
           console.error('Failed to get streak info:', e)
         }
-        
+
         setStats({
           totalSubmissions: s.total_submissions || 0,
           averageGreenScore: s.average_green_score || 0,
@@ -339,7 +339,7 @@ const Dashboard: React.FC = () => {
         <div className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-lg p-6 text-white shadow-lg">
           <h1 className="text-3xl font-bold mb-2">Welcome to Green Coding Advisor</h1>
           <p className="text-emerald-100">
-            You've saved <span className="font-semibold">{stats.carbonSaved} kg CO₂</span> and 
+            You've saved <span className="font-semibold">{stats.carbonSaved} kg CO₂</span> and
             <span className="font-semibold"> {stats.energySaved} kWh</span> of energy this month!
           </p>
         </div>
@@ -349,82 +349,82 @@ const Dashboard: React.FC = () => {
       <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6" staggerDelay={0.1}>
         <StaggerItem>
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6 border-l-4 border-green-500">
-          <div className="flex items-center">
-            <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-              <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Total Submissions</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalSubmissions}</p>
+            <div className="flex items-center">
+              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Total Submissions</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalSubmissions}</p>
+              </div>
             </div>
           </div>
-        </div>
         </StaggerItem>
 
         <StaggerItem>
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6 border-l-4 border-blue-500">
-          <div className="flex items-center">
-            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-              <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Avg Green Score</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.averageGreenScore}</p>
+            <div className="flex items-center">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Avg Green Score</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.averageGreenScore}</p>
+              </div>
             </div>
           </div>
-        </div>
         </StaggerItem>
 
         <StaggerItem>
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6 border-l-4 border-emerald-500">
-          <div className="flex items-center">
-            <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
-              <svg className="w-6 h-6 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Carbon Saved</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.carbonSaved} kg</p>
+            <div className="flex items-center">
+              <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
+                <svg className="w-6 h-6 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Carbon Saved</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.carbonSaved} kg</p>
+              </div>
             </div>
           </div>
-        </div>
         </StaggerItem>
 
         <StaggerItem>
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6 border-l-4 border-yellow-500">
-          <div className="flex items-center">
-            <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
-              <svg className="w-6 h-6 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-              </svg>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Badges Earned</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.badgesEarned}</p>
+            <div className="flex items-center">
+              <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
+                <svg className="w-6 h-6 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Badges Earned</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.badgesEarned}</p>
+              </div>
             </div>
           </div>
-        </div>
         </StaggerItem>
 
         <StaggerItem>
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6 border-l-4 border-orange-500">
-          <div className="flex items-center">
-            <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
-              <svg className="w-6 h-6 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Current Streak</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.currentStreak} days 🔥</p>
+            <div className="flex items-center">
+              <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                <svg className="w-6 h-6 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Current Streak</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.currentStreak} days 🔥</p>
+              </div>
             </div>
           </div>
-        </div>
         </StaggerItem>
       </StaggerContainer>
 
@@ -498,11 +498,10 @@ const Dashboard: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{stat.submissions}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                        stat.averageScore >= 80 ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' :
-                        stat.averageScore >= 60 ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300' :
-                        'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
-                      }`}>
+                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${stat.averageScore >= 80 ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' :
+                          stat.averageScore >= 60 ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300' :
+                            'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
+                        }`}>
                         {stat.averageScore.toFixed(1)}
                       </span>
                     </td>
@@ -522,42 +521,45 @@ const Dashboard: React.FC = () => {
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6">
           <Doughnut data={carbonSavedData} options={doughnutOptions} />
         </div>
-        
+
         <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-lg shadow-md p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Recent Submissions</h3>
           <div className="space-y-4">
-            {recentSubmissions.map((submission) => (
-              <div key={submission.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-700 rounded-lg">
-                <div className="flex items-center space-x-4">
-                  <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                    <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
+            {recentSubmissions.length > 0 ? (
+              recentSubmissions.map((submission) => (
+                <div key={submission.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-700 rounded-lg">
+                  <div className="flex items-center space-x-4">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                      <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">{submission.filename}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">{submission.language}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-white">{submission.filename}</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{submission.language}</p>
+                  <div className="text-right">
+                    <div className="flex items-center space-x-2">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${submission.greenScore >= 80 ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' :
+                          submission.greenScore >= 60 ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300' :
+                            'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
+                        }`}>
+                        {submission.greenScore}
+                      </span>
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
+                        {submission.carbonSaved} kg CO₂
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-400 dark:text-gray-500">
+                      {new Date(submission.timestamp).toLocaleDateString()}
+                    </p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="flex items-center space-x-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      submission.greenScore >= 80 ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' :
-                      submission.greenScore >= 60 ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300' :
-                      'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
-                    }`}>
-                      {submission.greenScore}
-                    </span>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
-                      {submission.carbonSaved} kg CO₂
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-400 dark:text-gray-500">
-                    {new Date(submission.timestamp).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-gray-500 dark:text-gray-400 text-center py-4">No recent submissions found.</p>
+            )}
           </div>
         </div>
       </div>
@@ -580,7 +582,7 @@ const Dashboard: React.FC = () => {
               <p className="text-sm text-green-600">Analyze new code</p>
             </div>
           </motion.button>
-          
+
           <motion.button
             onClick={async () => {
               try {
@@ -609,7 +611,7 @@ const Dashboard: React.FC = () => {
               <p className="text-sm text-blue-600">CSV & PDF</p>
             </div>
           </motion.button>
-          
+
           <motion.button
             onClick={() => navigate('/chatbot')}
             whileHover={{ scale: 1.05, y: -2 }}

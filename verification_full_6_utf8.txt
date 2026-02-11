@@ -1,0 +1,255 @@
+PASS: None
+--- Optimized Code Snippet ---
+
+// Inefficient JavaScript Code Patterns
+// This file is designed to trigger Green Coding Advisor warnings
+
+async function inefficientJavaScript() {
+    console.log("Running inefficient JS code...");
+    const start = Date.now();
+
+    // 1. Traditional for-loop with index access (Pattern: traditional for)
+    // Metric: Less efficient than for...of or optimized array methods
+    const items = new Array(50000).fill(0).map((_, i) => i);
+    const result = [];
+
+    console.log("1. Testing loop inefficiency...");
+    for (const item of items) {
+        // Inefficient: accessing by index
+        // Inefficient: pushing one by one in loop
+        if (item % 2 === 0) {
+            result.push(item * 2);
+        }
+    }
+
+    // 2. String concatenation (Pattern: += string)
+    // Metric: Creates many intermediate string objects
+    console.log("2. Testing string inefficiency...");
+    const longStringParts = []; // Optimized: Use array join
+    for (let i = 0; i < 5000; i++) {
+        longStringParts.push("item_" + i + ", ");
+    }
+
+    // 3. Sequential await in loop (Pattern: await in loop)
+    // Metric: Blocks execution, prevents parallelization
+    console.log("3. Testing async inefficiency...");
+    const urls = ["url1", "url2", "url3", "url4", "url5"];
+
+    const mockFetch = (url) => new Promise(resolve => setTimeout(() => resolve(url), 10));
+
+    for (const item of urls) {
+        // Inefficient: await inside loop makes requests sequential
+        // Should use Promise.all()
+        await mockFetch(item);
+    }
+
+    // 4. Repeated DOM access (Simulated)
+    // Metric: DOM access is slow
+    console.log("4. Testing DOM inefficiency (simulated)...");
+    const container = { innerHTML: "" }; // Mock DOM element
+    for (let i = 0; i < 1000; i++) {
+        // Inefficient: modifying layout repeatedly
+        // Optimized: Use DocumentFragment
+        container.innerHTML += `<div>Item ${i}</div>`;
+    }
+
+    const end = Date.now();
+    console.log(`Inefficient JS finished in ${end - start}ms`);
+}
+
+inefficientJavaScript();
+
+------------------------------
+PASS: None
+--- Optimized Code Snippet ---
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+
+public class Inefficient {
+
+    public static void main(String[] args) {
+        System.out.println("Running inefficient Java code...");
+        long startTime = System.currentTimeMillis();
+
+        // 1. Inefficient loop iteration (Pattern: manual for loop)
+        List<Integer> list = new ArrayList<>();
+        for (int i = 0; i < 50000; i++) {
+            list.add(i);
+        }
+
+        List<Integer> result = new ArrayList<>();
+        for (var item : list) {
+            // Inefficient: Repeatedly calling .get(i) on list (O(n^2) for LinkedList, adds
+            // overhead for ArrayList)
+            Integer val = item;
+
+            // Inefficient: Manual loop logic instead of Stream/parallelStream
+            if (val % 2 == 0) {
+                result.add(val * 2);
+            }
+        }
+
+        // 2. String Concatenation in Loop (Pattern: += string)
+        StringBuilder sSb = new StringBuilder();
+        for (int i = 0; i < 2000; i++) {
+            // Inefficient: Creates a new StringBuilder and String object each iteration
+            sSb.append("number" + i);
+        }
+
+        // 3. Excessive Auto-boxing (Pattern: Integer vs int)
+        // Metric: Creates unnecessary objects, GC pressure
+        int sum = 0;
+        for (int i = 0; i < 100000; i++) {
+            sum += i; // Unboxing and re-boxing every iteration
+        }
+
+        // 4. Inefficient wrapper class usage
+        // Using Boolean instead of boolean
+        boolean flag = true;
+        if (flag) {
+        }
+
+        // 5. Unbuffered I/O (Simulated)
+        // Would be System.out.print inside loop without buffer
+
+        long endTime = System.currentTimeMillis();
+        System.out.println("Inefficient Java finished in " + (endTime - startTime) + "ms");
+    }
+}
+
+------------------------------
+PASS: None
+--- Optimized Code Snippet ---
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <string.h>
+
+void extremely_inefficient_c() {
+    printf("Running inefficient C code...\n");
+    clock_t start = clock();
+    
+    // Metric: Quadratic complexity
+    int n = 10000;
+    long long sum = 0;
+    
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            sum += (i * j) % 5;
+        }
+    }
+    
+    // Metric: System call overhead, fragmentation
+    for (int i = 0; i < 5000; i++) {
+        std::vector<int> ptr(100);
+        // if (ptr) {
+            // Do some work
+            for (int k = 0; k < 100; k++) ptr[k] = k;
+            // free(ptr) // Vector auto-managed;
+        }
+    }
+    
+    // Metric: Wasted CPU cycles
+    double result = 0.0;
+    for (int i = 0; i < 1000000; i++) {
+        // (Compiler might optimize this out, but it's bad practice)
+        double invariant = 3.14159 * 2.71828 / 1.414;
+        result += i * invariant;
+    }
+    
+    std::string buffer = "";
+    for (int i = 0; i < 1000; i++) {
+        // Optimized: Use std::string or std::ostringstream for efficient concatenation
+        buffer += "a";
+    }
+    
+    clock_t end = clock();
+    double time_spent = (double)(end - start) / CLOCKS_PER_SEC;
+    printf("Inefficient C finished in %f seconds\n", time_spent);
+}
+
+int main() {
+    extremely_inefficient_c();
+    return 0;
+}
+
+------------------------------
+PASS: None
+--- Optimized Code Snippet ---
+"""
+Optimized by Green Coding Advisor
+- Scanned for inefficient patterns (none found)
+- Verified efficient resource usage
+"""
+
+import time
+import math
+import os
+import sys
+
+def extremely_inefficient_python():
+    print("Running EXTREMELY inefficient Python code...")
+    start_time = time.time()
+    
+    # 1. Very inefficient loop iteration (Pattern: range(len()))
+    # Metric: High loop overhead, index lookup cost
+    large_list = [i for i in range(50000)]
+    result_list = []
+    
+    print("1. Testing loop inefficiency...")
+    for i in range(len(large_list)):
+        # Inefficient: retrieving by index instead of iterating directly
+        val = large_list[i]
+        # Inefficient: append inside loop instead of list comprehension
+        result_list.append(val * 2)
+        
+    # 2. String concatenation hell (Pattern: += in loop)
+    # Metric: Huge memory churn creating new string objects
+    print("2. Testing string inefficiency...")
+    output_string = ""
+    words = ["word"] * 5000
+    for word in words:
+        # Inefficient: creates a new string object every iteration
+        output_string += word + " "
+        
+    # 3. Manual summation (Pattern: loops for math)
+    # Metric: Python interpreter overhead vs C-optimized sum()
+    print("3. Testing math inefficiency...")
+    total = 0
+    numbers = [i for i in range(100000)]
+    for n in numbers:
+        total = total + n
+        
+    # 4. Nested loops with redundant filtering (Pattern: nested loops)
+    # Metric: O(N^2) complexity where O(N) is possible
+    print("4. Testing nested loop inefficiency...")
+    subset = []
+    source_a = [i for i in range(1000)]
+    source_b = [i for i in range(1000)]
+    
+    for a in source_a:
+        for b in source_b:
+            if a == b:
+                subset.append(a)
+                
+    # 5. Redundant API calls/IO (simulated)
+    # Metric: Waiting on IO in serial
+    print("5. Testing redundant IO patterns...")
+    dummy_files = ["file1", "file2", "file3", "file4", "file5"] * 100
+    found_count = 0
+    for fname in dummy_files:
+        # Inefficient: OS call inside tight loop
+        if os.path.exists(fname): 
+            found_count += 1
+            
+    end_time = time.time()
+    print(f"Inefficient code finished in {end_time - start_time:.4f} seconds")
+    return output_string, total, subset
+
+if __name__ == "__main__":
+    extremely_inefficient_python()
+
+------------------------------

@@ -881,6 +881,139 @@ class ReportGenerator:
         else:
             return "Code requires optimization before deployment. Apply suggested improvements."
     
+    def generate_weekly_email_body(
+        self,
+        start_date: str,
+        end_date: str,
+        user_data: Dict[str, Any],
+        stats: Dict[str, Any],
+        recent_submissions: List[Dict[str, Any]]
+    ) -> str:
+        """Generate HTML body for weekly email report"""
+        
+        # Calculate sustainability level and motivational message
+        avg_score = stats.get('average_green_score', 0)
+        if avg_score >= 80:
+            level = "Sustainability Champion"
+            message = "Outstanding work! You are leading the way in sustainable coding."
+            color = "#10b981" # Green
+        elif avg_score >= 60:
+            level = "Eco-Conscious Coder"
+            message = "Great progress! You're making a real difference."
+            color = "#3b82f6" # Blue
+        else:
+            level = "Green Coder in Training"
+            message = "Keep going! Every optimization counts towards a greener future."
+            color = "#f59e0b" # Amber
+            
+        html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f3f4f6; }}
+                .container {{ max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }}
+                .header {{ background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: white; padding: 30px; text-align: center; }}
+                .header h1 {{ margin: 0; font-size: 24px; font-weight: bold; }}
+                .header p {{ margin: 10px 0 0; opacity: 0.9; }}
+                .content {{ padding: 30px; }}
+                .greeting {{ font-size: 18px; color: #1f2937; margin-bottom: 20px; }}
+                .summary-card {{ background-color: {color}10; border-left: 4px solid {color}; padding: 20px; border-radius: 4px; margin-bottom: 30px; }}
+                .summary-title {{ color: {color}; font-weight: bold; font-size: 16px; margin-bottom: 5px; }}
+                .stats-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px; }}
+                .stat-item {{ background-color: #f9fafb; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #e5e7eb; }}
+                .stat-value {{ font-size: 24px; font-weight: bold; color: #111827; margin-bottom: 5px; }}
+                .stat-label {{ font-size: 13px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }}
+                .submissions-list {{ margin-bottom: 30px; }}
+                .submission-item {{ display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #f3f4f6; }}
+                .submission-item:last-child {{ border-bottom: none; }}
+                .file-info {{ display: flex; flex-direction: column; }}
+                .filename {{ font-weight: 500; color: #374151; }}
+                .language {{ font-size: 12px; color: #9ca3af; }}
+                .score {{ font-weight: bold; padding: 4px 8px; border-radius: 4px; font-size: 14px; }}
+                .score-high {{ background-color: #d1fae5; color: #065f46; }}
+                .score-med {{ background-color: #dbeafe; color: #1e40af; }}
+                .score-low {{ background-color: #fee2e2; color: #991b1b; }}
+                .footer {{ background-color: #f9fafb; padding: 20px; text-align: center; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; }}
+                .btn {{ display: inline-block; background-color: #059669; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 20px; }}
+                .btn:hover {{ background-color: #047857; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>Weekly Green Coding Report</h1>
+                    <p>{start_date} - {end_date}</p>
+                </div>
+                
+                <div class="content">
+                    <p class="greeting">Hello {user_data.get('username', 'Green Coder')},</p>
+                    <p>Here's a summary of your sustainable coding impact this week.</p>
+                    
+                    <div class="summary-card">
+                        <div class="summary-title">{level}</div>
+                        <p>{message}</p>
+                    </div>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-value">{stats.get('total_submissions', 0)}</div>
+                            <div class="stat-label">Submissions</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">{stats.get('average_green_score', 0):.1f}</div>
+                            <div class="stat-label">Avg Green Score</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">{stats.get('total_co2_saved', 0):.2f}g</div>
+                            <div class="stat-label">CO₂ Saved</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">{stats.get('total_energy_saved', 0):.2f}Wh</div>
+                            <div class="stat-label">Energy Saved</div>
+                        </div>
+                    </div>
+                    
+                    <h3>Top Submissions This Week</h3>
+                    <div class="submissions-list">
+        """
+        
+        if recent_submissions:
+            for sub in recent_submissions[:5]:
+                score = sub.get('green_score', 0)
+                score_class = "score-high" if score >= 80 else "score-med" if score >= 60 else "score-low"
+                
+                html += f"""
+                        <div class="submission-item">
+                            <div class="file-info">
+                                <span class="filename">{sub.get('filename', 'code.py')}</span>
+                                <span class="language">{sub.get('language', 'unknown')}</span>
+                            </div>
+                            <span class="score {{score_class}}">{{score:.1f}}</span>
+                        </div>
+                """.format(score_class=score_class, score=score)
+        else:
+            html += "<p><i>No submissions this week. Time to start coding!</i></p>"
+            
+        html += f"""
+                    </div>
+                    
+                    <div style="text-align: center;">
+                        <a href="{user_data.get('dashboard_url', '#')}" class="btn">View Full Dashboard</a>
+                    </div>
+                </div>
+                
+                <div class="footer">
+                    <p>Generated by Green Coding Advisor AI</p>
+                    <p>Keep coding green!</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        return html
+
     def generate_csv_report(self, submissions_data: List[Dict[str, Any]]) -> BytesIO:
         """Generate a CSV report for multiple submissions"""
         buffer = BytesIO()

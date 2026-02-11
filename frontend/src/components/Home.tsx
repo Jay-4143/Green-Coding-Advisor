@@ -15,7 +15,7 @@ const Home: React.FC = () => {
       {/* Hero Section with Full-Screen Background */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
         {/* Background Video/Image */}
-        <div 
+        <div
           className="absolute inset-0 z-0"
           style={{
             backgroundImage: `url('https://images.unsplash.com/photo-1550751827-4bd374c3f58b?ixlib=rb-4.0.3&auto=format&fit=crop&w=3840&q=80')`,
@@ -26,7 +26,7 @@ const Home: React.FC = () => {
         >
           <div className="absolute inset-0 bg-gradient-to-br from-slate-900/90 via-slate-800/90 to-slate-900/90"></div>
         </div>
-        
+
         {/* Content */}
         <HeroSection className="relative z-10 text-center px-4 max-w-4xl mx-auto">
           <FadeInUp delay={0.2}>
@@ -46,23 +46,13 @@ const Home: React.FC = () => {
           </FadeInUp>
           <FadeInUp delay={0.8}>
             <div className="flex gap-4 justify-center flex-wrap">
+
               <motion.div
                 whileHover={{ scale: 1.05, y: -2 }}
                 whileTap={{ scale: 0.98 }}
               >
-                <Link 
-                  to="/submit" 
-                  className="inline-block px-8 py-4 bg-emerald-600 text-white rounded-lg font-semibold text-lg shadow-lg"
-                >
-                  Get Started
-                </Link>
-              </motion.div>
-              <motion.div
-                whileHover={{ scale: 1.05, y: -2 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <Link 
-                  to="/about" 
+                <Link
+                  to="/about"
                   className="inline-block px-8 py-4 bg-white/10 backdrop-blur-md text-white rounded-lg font-semibold text-lg border-2 border-white/30"
                 >
                   Learn More
@@ -84,7 +74,7 @@ const Home: React.FC = () => {
               Empower your development team with tools to write more efficient, sustainable code
             </p>
           </FadeInUp>
-          
+
           <StaggerContainer className="grid md:grid-cols-3 gap-8" staggerDelay={0.15}>
             <StaggerItem>
               <div className="bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/30 dark:to-green-900/30 rounded-xl p-8 shadow-lg border border-emerald-200 dark:border-emerald-800">
@@ -95,7 +85,7 @@ const Home: React.FC = () => {
                 </p>
               </div>
             </StaggerItem>
-            
+
             <StaggerItem>
               <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/30 dark:to-cyan-900/30 rounded-xl p-8 shadow-lg border border-blue-200 dark:border-blue-800">
                 <div className="text-5xl mb-4">🤖</div>
@@ -105,7 +95,7 @@ const Home: React.FC = () => {
                 </p>
               </div>
             </StaggerItem>
-            
+
             <StaggerItem>
               <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/30 rounded-xl p-8 shadow-lg border border-purple-200 dark:border-purple-800">
                 <div className="text-5xl mb-4">📊</div>
@@ -121,7 +111,7 @@ const Home: React.FC = () => {
 
       {/* Stats Section */}
       <section className="relative py-20 text-white overflow-hidden">
-        <div 
+        <div
           className="absolute inset-0 z-0"
           style={{
             backgroundImage: `url('https://images.unsplash.com/photo-1498050108023-c5249f4df085?ixlib=rb-4.0.3&auto=format&fit=crop&w=3840&q=80')`,
@@ -176,8 +166,8 @@ const Home: React.FC = () => {
               whileHover={{ scale: 1.05, y: -2 }}
               whileTap={{ scale: 0.98 }}
             >
-              <Link 
-                to="/signup" 
+              <Link
+                to="/journey"
                 className="inline-block px-10 py-5 bg-emerald-600 text-white rounded-lg font-semibold text-lg shadow-lg"
               >
                 Start Your Journey
@@ -186,7 +176,7 @@ const Home: React.FC = () => {
           </FadeInUp>
         </div>
       </section>
-    </div>
+    </div >
   )
 }
 

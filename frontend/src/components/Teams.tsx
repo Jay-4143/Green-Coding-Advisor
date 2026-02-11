@@ -57,6 +57,8 @@ const Teams: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newTeamName, setNewTeamName] = useState('')
   const [newTeamDescription, setNewTeamDescription] = useState('')
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false)
+  const [newMemberEmail, setNewMemberEmail] = useState('')
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -105,12 +107,23 @@ const Teams: React.FC = () => {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
-      </div>
-    )
+  const handleAddMember = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedTeam) return
+
+    try {
+      await apiClient.post(`/teams/${selectedTeam.team.id}/members`, {
+        email: newMemberEmail,
+        role: 'member'
+      })
+      alert('Member added successfully')
+      setNewMemberEmail('')
+      setShowAddMemberModal(false)
+      fetchTeamDashboard(selectedTeam.team.id)
+    } catch (error: any) {
+      console.error('Error adding member:', error)
+      alert(error?.response?.data?.detail || 'Failed to add member')
+    }
   }
 
   return (
@@ -184,6 +197,44 @@ const Teams: React.FC = () => {
         </div>
       )}
 
+      {showAddMemberModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-slate-800 rounded-lg p-6 max-w-md w-full">
+            <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">Add Team Member</h2>
+            <form onSubmit={handleAddMember} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Member Email
+                </label>
+                <input
+                  type="email"
+                  value={newMemberEmail}
+                  onChange={(e) => setNewMemberEmail(e.target.value)}
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
+                  placeholder="user@example.com"
+                  required
+                />
+              </div>
+              <div className="flex space-x-4">
+                <button
+                  type="submit"
+                  className="flex-1 bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700"
+                >
+                  Add Member
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAddMemberModal(false)}
+                  className="flex-1 bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-md hover:bg-gray-300 dark:hover:bg-slate-600"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1">
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6">
@@ -193,11 +244,10 @@ const Teams: React.FC = () => {
                 <button
                   key={team.id}
                   onClick={() => fetchTeamDashboard(team.id)}
-                  className={`w-full text-left px-4 py-2 rounded-md ${
-                    selectedTeam?.team.id === team.id
-                      ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
-                      : 'hover:bg-gray-100 dark:hover:bg-slate-700'
-                  }`}
+                  className={`w-full text-left px-4 py-2 rounded-md ${selectedTeam?.team.id === team.id
+                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                    : 'hover:bg-gray-100 dark:hover:bg-slate-700'
+                    }`}
                 >
                   <div className="font-medium text-gray-900 dark:text-white">{team.name}</div>
                   {team.description && (
@@ -244,7 +294,15 @@ const Teams: React.FC = () => {
               </div>
 
               <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6">
-                <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Team Leaderboard</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Team Leaderboard</h3>
+                  <button
+                    onClick={() => setShowAddMemberModal(true)}
+                    className="text-sm text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 font-medium"
+                  >
+                    + Add Member
+                  </button>
+                </div>
                 <div className="space-y-2">
                   {selectedTeam.leaderboard.map((member, index) => (
                     <div

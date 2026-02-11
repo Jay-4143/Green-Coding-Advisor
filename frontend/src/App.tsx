@@ -9,7 +9,9 @@ import Badges from './components/Badges'
 import Teams from './components/Teams'
 import Chatbot from './components/Chatbot'
 import Settings from './components/Settings'
+import ProjectDetails from './components/ProjectDetails'
 import Profile from './components/Profile'
+import Journey from './components/Journey'
 import AdminDashboard from './components/AdminDashboard'
 import VerifyEmail from './components/VerifyEmail'
 import VerifyOtp from './components/VerifyOtp'
@@ -21,6 +23,7 @@ import Services from './components/Services'
 import Contact from './components/Contact'
 import LoginModal from './components/LoginModal'
 import { useTheme } from './contexts/ThemeContext'
+import BadgeNotification from './components/BadgeNotification'
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `px-4 py-2 rounded-md text-sm font-medium transition-colors ${isActive
@@ -29,6 +32,8 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   }`
 
 function Layout({ children }: { children: React.ReactNode }) {
+
+
   const navigate = useNavigate()
   const location = useLocation()
   const { theme: _theme } = useTheme()
@@ -39,6 +44,10 @@ function Layout({ children }: { children: React.ReactNode }) {
   const [showUserMenu, setShowUserMenu] = React.useState(false)
   const [scrollY, setScrollY] = React.useState(0)
   const [isScrolled, setIsScrolled] = React.useState(false)
+
+  // Badge Notification State
+  const [currentBadges, setCurrentBadges] = React.useState<string[]>([])
+  const [newBadge, setNewBadge] = React.useState<{ name: string; description: string; icon: string } | null>(null)
 
   // Get background image based on current route
   const getNavbarBackground = () => {
@@ -67,6 +76,65 @@ function Layout({ children }: { children: React.ReactNode }) {
     setAuthed(Boolean(localStorage.getItem('access_token')))
   }, [location])
 
+  // Badge Polling Logic
+  React.useEffect(() => {
+    if (!authed) return
+
+    const checkBadges = async () => {
+      try {
+        const response = await api.get('/auth/me')
+        const badges = response.data?.badges || []
+
+        // Initialize current badges if empty
+        if (currentBadges.length === 0 && badges.length > 0) {
+          setCurrentBadges(badges)
+          return
+        }
+
+        // Check for new badges
+        const latestBadge = badges.find((b: string) => !currentBadges.includes(b))
+        if (latestBadge) {
+          // Map badge name to display info (mock data or from backend if available)
+          const badgeInfo = {
+            name: startCase(latestBadge),
+            description: `You've earned the ${startCase(latestBadge)} badge!`,
+            icon: '🏆'
+          }
+
+          // Custom icons/descriptions based on badge name
+          if (latestBadge.includes('carbon')) {
+            badgeInfo.icon = '🌱'
+            badgeInfo.description = 'Great job reducing carbon emissions!'
+          } else if (latestBadge.includes('architect')) {
+            badgeInfo.icon = '🏗️'
+            badgeInfo.description = 'Master of sustainable architecture!'
+          } else if (latestBadge.includes('efficiency')) {
+            badgeInfo.icon = '⚡'
+            badgeInfo.description = 'Efficiency expert!'
+          }
+
+          setNewBadge(badgeInfo)
+          setCurrentBadges(badges)
+        }
+      } catch (error) {
+        console.error('Error checking badges:', error)
+      }
+    }
+
+    // Check immediately and then every 30 seconds
+    checkBadges()
+    const interval = setInterval(checkBadges, 30000)
+    return () => clearInterval(interval)
+  }, [authed, currentBadges])
+
+  // Helper to title case badge names
+  const startCase = (str: string) => {
+    return str
+      .replace(/_/g, ' ')
+      .replace(/([a-z])([A-Z])/g, (_, p1, p2) => `${p1} ${p2}`)
+      .replace(/\b\w/g, l => l.toUpperCase())
+  }
+
   // Validate token once on mount; if invalid, clear and show login prompt
   React.useEffect(() => {
     let cancelled = false
@@ -80,6 +148,10 @@ function Layout({ children }: { children: React.ReactNode }) {
         const response = await api.get('/auth/me')
         if (!cancelled && response.data) {
           setUserRole(response.data.role || null)
+          // Set initial badges
+          if (response.data.badges) {
+            setCurrentBadges(response.data.badges)
+          }
         }
       } catch {
         clearTokens()
@@ -95,6 +167,7 @@ function Layout({ children }: { children: React.ReactNode }) {
       cancelled = true
     }
   }, [])
+
 
   // If user just reset password, show login modal once on landing
   React.useEffect(() => {
@@ -428,6 +501,11 @@ function Layout({ children }: { children: React.ReactNode }) {
         isOpen={showLoginModal}
         onClose={() => setShowLoginModal(false)}
         onSuccess={handleLoginSuccess}
+      />
+
+      <BadgeNotification
+        badge={newBadge}
+        onClose={() => setNewBadge(null)}
       />
 
       {/* Click outside to close user menu */}
@@ -810,6 +888,7 @@ export default function App() {
     <Layout>
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/journey" element={<Journey />} />
         <Route path="/about" element={<About />} />
         <Route path="/services" element={<Services />} />
         <Route path="/contact" element={<Contact />} />
@@ -819,6 +898,7 @@ export default function App() {
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/badges" element={<Badges />} />
         <Route path="/teams" element={<Teams />} />
+        <Route path="/projects/:id" element={<ProjectDetails />} />
         <Route path="/chatbot" element={<Chatbot />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/profile" element={<Profile />} />

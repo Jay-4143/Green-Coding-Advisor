@@ -5,7 +5,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from ..mongo import get_mongo_db, get_next_sequence
 from ..schemas import User
-from ..schemas import TeamBase, TeamCreate, TeamResponse
+from ..schemas import TeamBase, TeamCreate, TeamResponse, TeamMemberAdd
 from ..auth import get_current_active_user
 from ..logger import green_logger
 
@@ -158,8 +158,7 @@ async def delete_team(
 @router.post("/{team_id}/members")
 async def add_team_member(
     team_id: int,
-    user_id: int,
-    role: str = "member",
+    member_data: TeamMemberAdd,
     current_user: User = Depends(get_current_active_user),
     db: AsyncIOMotorDatabase = Depends(get_mongo_db)
 ):
@@ -175,18 +174,18 @@ async def add_team_member(
         "role": "admin"
     })
     
-    if not membership and current_user.role.value != "admin":
+    if not membership and team.get("created_by") != current_user.id and current_user.role.value != "admin":
         raise HTTPException(status_code=403, detail="Not a team admin")
     
     # Check if user exists
-    user = await db["users"].find_one({"id": user_id})
+    user = await db["users"].find_one({"email": member_data.email})
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail="User with this email not found")
     
     # Check if already a member
     existing = await db["team_members"].find_one({
         "team_id": team_id,
-        "user_id": user_id
+        "user_id": user["id"]
     })
     if existing:
         raise HTTPException(status_code=400, detail="User is already a team member")
@@ -196,11 +195,17 @@ async def add_team_member(
     team_member_doc = {
         "id": member_id,
         "team_id": team_id,
-        "user_id": user_id,
-        "role": role,
+        "user_id": user["id"],
+        "role": member_data.role,
         "joined_at": datetime.utcnow()
     }
     await db["team_members"].insert_one(team_member_doc)
+    
+    green_logger.log_user_action(
+        user_id=current_user.id,
+        action="team_member_added",
+        details={"team_id": team_id, "added_user_id": user["id"]}
+    )
     
     return {"message": "Member added successfully"}
 

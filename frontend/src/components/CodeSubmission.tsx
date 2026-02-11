@@ -43,74 +43,74 @@ interface SubmissionResult {
 function looksLikeLanguage(code: string, language: string): boolean {
   const lang = language.toLowerCase()
   const trimmedCode = code.trim()
-  
+
   // Check if input looks like actual code (not random gibberish)
   function looksLikeCode(text: string): boolean {
     // Must have at least some code structure
     const hasStructure = /[(){}[\];,=+\-*/<>!&|%]/.test(text) ||  // operators/symbols
-                         /\b\w+\s*\(/.test(text) ||                 // function calls
-                         /\b\w+\s*=/.test(text) ||                  // assignments
-                         /['"]/.test(text) ||                       // strings
-                         /\/\/|\/\*|#/.test(text)                   // comments
-    
+      /\b\w+\s*\(/.test(text) ||                 // function calls
+      /\b\w+\s*=/.test(text) ||                  // assignments
+      /['"]/.test(text) ||                       // strings
+      /\/\/|\/\*|#/.test(text)                   // comments
+
     if (!hasStructure) {
       return false  // No code structure at all
     }
-    
+
     // Check for common code patterns (must have at least one)
     const hasCodePatterns = /\b\w+\s*\(/.test(text) ||           // function calls
-                             /\b\w+\s*=\s*/.test(text) ||         // assignments
-                             /['"].*['"]/.test(text) ||            // strings
-                             /\b\w+\s*[+\-*/=<>!]/.test(text) ||  // operators
-                             /:\s*$/.test(text) ||                 // colons (if/for/def)
-                             /#include|import|from/.test(text) ||  // imports/includes
-                             /\/\/|\/\*|#/.test(text)              // comments
-    
+      /\b\w+\s*=\s*/.test(text) ||         // assignments
+      /['"].*['"]/.test(text) ||            // strings
+      /\b\w+\s*[+\-*/=<>!]/.test(text) ||  // operators
+      /:\s*$/.test(text) ||                 // colons (if/for/def)
+      /#include|import|from/.test(text) ||  // imports/includes
+      /\/\/|\/\*|#/.test(text)              // comments
+
     if (!hasCodePatterns) {
       return false  // No recognizable code patterns
     }
-    
+
     // Check for random text patterns (reject if looks like gibberish)
     const words = text.match(/\b\w+\b/g) || []
-    
+
     // Check if input is just a long string of random letters (no spaces, no structure)
     if (text.length > 15 && !/\s/.test(text) && !/[(){}[\];,=+\-*/<>!&|%'"]/.test(text)) {
       return false  // Random letter sequence without code structure
     }
-    
+
     // Check for random words (long words that aren't keywords or common code terms)
-    const hasOnlyRandomWords = words.length > 0 && 
-                               words.every(word => 
-                                 word.length > 8 &&  // Long words
-                                 !/[(){}[\];,=+\-*/]/.test(word) &&  // No symbols
-                                 !/^(def|import|print|function|const|let|var|class|public|private|static|void|int|return|if|for|while|console|System|include|True|False|None|null|undefined)$/i.test(word)  // Not keywords
-                               )
-    
+    const hasOnlyRandomWords = words.length > 0 &&
+      words.every(word =>
+        word.length > 8 &&  // Long words
+        !/[(){}[\];,=+\-*/]/.test(word) &&  // No symbols
+        !/^(def|import|print|function|const|let|var|class|public|private|static|void|int|return|if|for|while|console|System|include|True|False|None|null|undefined)$/i.test(word)  // Not keywords
+      )
+
     if (hasOnlyRandomWords && words.length > 2) {
       return false  // Looks like random text
     }
-    
+
     // Must have at least one recognizable code element
     const hasRecognizableCode = /[(){}[\];,=+\-*/<>!&|%]/.test(text) ||  // Operators
-                                 /\b\w+\s*\(/.test(text) ||              // Function calls
-                                 /\b\w+\s*=/.test(text) ||               // Assignments
-                                 /['"]/.test(text) ||                    // Strings
-                                 /:\s*$/.test(text) ||                   // Colons
-                                 /#include|import|from|def|function|class|public|private|static|const|let|var/.test(text)  // Keywords
-    
+      /\b\w+\s*\(/.test(text) ||              // Function calls
+      /\b\w+\s*=/.test(text) ||               // Assignments
+      /['"]/.test(text) ||                    // Strings
+      /:\s*$/.test(text) ||                   // Colons
+      /#include|import|from|def|function|class|public|private|static|const|let|var/.test(text)  // Keywords
+
     return hasRecognizableCode
   }
-  
+
   // Very short code (less than 10 chars) - check if it looks like code
   if (trimmedCode.length < 10) {
     return looksLikeCode(trimmedCode)
   }
-  
+
   // For longer code, must look like actual code
   if (!looksLikeCode(trimmedCode)) {
     return false
   }
-  
+
   const patterns: Record<string, RegExp[]> = {
     python: [
       /\bdef\s+\w+\s*\(/,           // function definition with name
@@ -168,17 +168,7 @@ function looksLikeLanguage(code: string, language: string): boolean {
       /@Override/,                   // annotations
       /\bnew\s+\w+\(/,               // new keyword
     ],
-    cpp: [
-      /#include/,                    // include directive
-      /\bstd::/,                     // std namespace
-      /\bint\s+main\s*\(/,           // main function
-      /\busing\s+namespace/,         // using namespace
-      /\bcout\s*<</,                 // cout output
-      /\bcin\s*>>/,                  // cin input
-      /\bnew\s+/,                    // new keyword
-      /\bdelete\s+/,                 // delete keyword
-      /\/\/.*|\/\*.*\*\//,          // comments
-    ],
+
     c: [
       /#include/,                    // include directive
       /\bint\s+main\s*\(/,           // main function
@@ -188,14 +178,14 @@ function looksLikeLanguage(code: string, language: string): boolean {
       /\/\/.*|\/\*.*\*\//,          // comments
     ],
   }
-  
+
   // Get patterns for the selected language
   const checks = patterns[lang] || []
   if (!checks.length) return true  // Unknown language - allow it
-  
+
   // Check if code matches any pattern for the selected language
   const matchesLanguage = checks.some((re) => re.test(code))
-  
+
   // Check for strong anti-patterns from other languages (reject if found)
   const antiPatterns: Record<string, RegExp[]> = {
     python: [
@@ -203,7 +193,6 @@ function looksLikeLanguage(code: string, language: string): boolean {
       /\bpublic\s+class/,                  // Java class
       /\bprivate\s+/,                      // Java private
       /\bstatic\s+/,                       // Java static
-      /#include/,                          // C/C++ include
       /\bfunction\s+\w+\s*\(/,            // JavaScript function declaration
       /\bconsole\./,                       // JavaScript console (any method)
       /\bconst\s+\w+\s*=/,                 // JavaScript const
@@ -215,8 +204,6 @@ function looksLikeLanguage(code: string, language: string): boolean {
       /\.then\(|\.catch\(/,                // JavaScript Promises
       /\basync\s+/,                        // JavaScript async
       /\bawait\s+/,                        // JavaScript await
-      /\bstd::/,                           // C++ namespace
-      /\bint\s+main\s*\(/,                 // C/C++ main
       /\bvoid\s+/,                         // Java/C void
     ],
     javascript: [
@@ -234,9 +221,9 @@ function looksLikeLanguage(code: string, language: string): boolean {
       /\bpublic\s+class/,                  // Java class
       /\bprivate\s+/,                      // Java private
       /\bvoid\s+/,                         // Java void
-      /#include/,                          // C/C++
-      /\bstd::/,                           // C++ namespace
-      /\bint\s+main\s*\(/,                 // C/C++ main
+      /\bpublic\s+class/,                  // Java class
+      /\bprivate\s+/,                      // Java private
+      /\bvoid\s+/,                         // Java void
     ],
     java: [
       /\bdef\s+\w+\s*\(/,                 // Python def
@@ -245,25 +232,9 @@ function looksLikeLanguage(code: string, language: string): boolean {
       /\bself\b/,                          // Python self
       /\bTrue\b|\bFalse\b/,                // Python booleans
       /\bNone\b/,                          // Python None
-      /#include/,                          // C/C++ include
-      /=>/,                                // JavaScript arrow
-      /\bconsole\.log/,                    // JavaScript console
-      /\bconst\s+\w+\s*=/,                 // JavaScript const
-      /\blet\s+\w+\s*=/,                   // JavaScript let
-      /\bstd::/,                           // C++ namespace
-    ],
-    cpp: [
-      /\bdef\s+\w+\s*\(/,                 // Python def
-      /\bprint\s*\(/,                      // Python print
-      /\bimport\s+\w+\s*$/,               // Python import
-      /\bself\b/,                          // Python self
-      /\bpublic\s+static\s+void\s+main/,  // Java main
-      /\bpublic\s+class/,                  // Java class
-      /=>/,                                // JavaScript arrow
-      /\bconsole\.log/,                    // JavaScript console
-      /\bconst\s+\w+\s*=/,                 // JavaScript const
       /\blet\s+\w+\s*=/,                   // JavaScript let
     ],
+
     c: [
       /\bdef\s+\w+\s*\(/,                 // Python def
       /\bprint\s*\(/,                      // Python print
@@ -278,21 +249,21 @@ function looksLikeLanguage(code: string, language: string): boolean {
       /\bstd::/,                           // C++ namespace
     ],
   }
-  
+
   const antiChecks = antiPatterns[lang] || []
   const hasAntiPattern = antiChecks.some((re) => re.test(code))
-  
+
   // If strong anti-patterns are found, reject it
   if (hasAntiPattern) {
     return false
   }
-  
+
   // For code longer than 20 characters, require at least one match with selected language
   // This ensures uploaded files match the selected language
   if (trimmedCode.length > 20) {
     return matchesLanguage
   }
-  
+
   // For shorter code, be more lenient but still prefer language match
   return matchesLanguage || !hasAntiPattern
 }
@@ -310,7 +281,6 @@ const CodeSubmission: React.FC = () => {
     { value: 'python', label: 'Python' },
     { value: 'javascript', label: 'JavaScript' },
     { value: 'java', label: 'Java' },
-    { value: 'cpp', label: 'C++' },
     { value: 'c', label: 'C' }
   ]
 
@@ -382,7 +352,7 @@ const CodeSubmission: React.FC = () => {
         co2Emissions: metrics.co2_emissions_g,
         memoryUsage: metrics.memory_usage_mb,
         cpuTime: metrics.cpu_time_ms,
-        suggestions: optimizeData?.improvements_explanation 
+        suggestions: optimizeData?.improvements_explanation
           ? optimizeData.improvements_explanation.split('\n').filter((s: string) => s.trim())
           : Array.isArray(analyzeData.suggestions)
             ? analyzeData.suggestions.map((s: any) => (typeof s === 'string' ? s : s.explanation || s.finding || ''))
@@ -392,13 +362,13 @@ const CodeSubmission: React.FC = () => {
         realWorldImpact: analyzeData.real_world_impact || analyzeData.analysis_details?.real_world_impact || undefined,
         codeSuggestions: Array.isArray(analyzeData.suggestions)
           ? analyzeData.suggestions
-              .filter((s: any) => typeof s === 'object' && s.before_code && s.after_code)
-              .map((s: any) => ({
-                ...s,
-                severity: ['low', 'medium', 'high'].includes(String(s.severity).toLowerCase())
-                  ? (String(s.severity).toLowerCase() as 'low' | 'medium' | 'high')
-                  : 'medium',
-              }))
+            .filter((s: any) => typeof s === 'object' && s.before_code && s.after_code)
+            .map((s: any) => ({
+              ...s,
+              severity: ['low', 'medium', 'high'].includes(String(s.severity).toLowerCase())
+                ? (String(s.severity).toLowerCase() as 'low' | 'medium' | 'high')
+                : 'medium',
+            }))
           : [],
         // Full optimization data (only if optimization was successful)
         optimizedCode: optimizeData?.optimized_code,
@@ -413,7 +383,7 @@ const CodeSubmission: React.FC = () => {
       setResult(normalized)
       try {
         localStorage.setItem('last_analysis', JSON.stringify(normalized))
-      } catch {}
+      } catch { }
       // Navigate to analysis page to view results
       navigate('/analysis')
     } catch (err: any) {
@@ -460,10 +430,10 @@ const CodeSubmission: React.FC = () => {
     )
     const best = withScore.length
       ? withScore.reduce((acc, curr) => {
-          const currGain = curr.predicted_improvement?.green_score || 0
-          const accGain = acc.predicted_improvement?.green_score || 0
-          return currGain > accGain ? curr : acc
-        })
+        const currGain = curr.predicted_improvement?.green_score || 0
+        const accGain = acc.predicted_improvement?.green_score || 0
+        return currGain > accGain ? curr : acc
+      })
       : null
 
     const totalEnergySavedWh = result.codeSuggestions.reduce((sum, s) => {
@@ -483,7 +453,7 @@ const CodeSubmission: React.FC = () => {
     <div className="space-y-6 bg-slate-50 dark:bg-slate-900 min-h-screen p-4 sm:p-6">
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Submit Code for Analysis</h2>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -502,7 +472,7 @@ const CodeSubmission: React.FC = () => {
                 ))}
               </select>
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Filename (optional)
@@ -535,7 +505,7 @@ const CodeSubmission: React.FC = () => {
               <input
                 type="file"
                 onChange={handleFileUpload}
-                accept=".py,.js,.java,.cpp,.c,.ts,.jsx,.tsx"
+                accept=".py,.js,.java,.c,.ts,.jsx,.tsx"
                 className="hidden"
                 id="file-upload"
               />
@@ -592,26 +562,24 @@ const CodeSubmission: React.FC = () => {
       {result && (
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6">
           <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Analysis Results</h3>
-          
+
           {/* Green Score */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-lg font-semibold text-gray-900 dark:text-white">Green Score</h4>
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                result.greenScore >= 80 ? 'text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30' :
-                result.greenScore >= 60 ? 'text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/30' :
-                'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30'
-              }`}>
+              <span className={`px-3 py-1 rounded-full text-sm font-medium ${result.greenScore >= 80 ? 'text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30' :
+                  result.greenScore >= 60 ? 'text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/30' :
+                    'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30'
+                }`}>
                 {result.greenScore}/100 - {getScoreLabel(result.greenScore)}
               </span>
             </div>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
               <div
-                className={`h-3 rounded-full ${
-                  result.greenScore >= 80 ? 'bg-green-500' :
-                  result.greenScore >= 60 ? 'bg-yellow-500' :
-                  'bg-red-500'
-                }`}
+                className={`h-3 rounded-full ${result.greenScore >= 80 ? 'bg-green-500' :
+                    result.greenScore >= 60 ? 'bg-yellow-500' :
+                      'bg-red-500'
+                  }`}
                 style={{ width: `${result.greenScore}%` }}
               ></div>
             </div>
@@ -674,8 +642,8 @@ const CodeSubmission: React.FC = () => {
               <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Real-World Impact</h4>
               <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 rounded-lg p-4 border border-green-200 dark:border-green-800">
                 <p className="text-sm text-gray-700 dark:text-gray-200 mb-3 font-medium">
-                  {result.realWorldImpact.description || 
-                   `Running this code 1M times would:`}
+                  {result.realWorldImpact.description ||
+                    `Running this code 1M times would:`}
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {result.realWorldImpact.light_bulb_hours && (
@@ -722,167 +690,167 @@ const CodeSubmission: React.FC = () => {
             </div>
           )}
 
-      {/* Optimization Summary */}
-      {optimizationSummary && optimizationSummary.best && (
-        <div className="mb-6 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-lg p-4 flex flex-col md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-sm text-emerald-700 dark:text-emerald-300 font-semibold">Top Optimization</p>
-            <p className="text-lg font-bold text-emerald-900 dark:text-emerald-200">{optimizationSummary.best.finding}</p>
-            <p className="text-sm text-emerald-800 dark:text-emerald-300 mt-1">
-              {optimizationSummary.best.explanation}
-            </p>
-          </div>
-          <div className="mt-3 md:mt-0 flex items-center space-x-4">
-            {typeof optimizationSummary.best.predicted_improvement?.green_score === 'number' && (
-              <div className="px-3 py-2 rounded-md bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-sm font-semibold">
-                +{optimizationSummary.best.predicted_improvement.green_score} Green Score
+          {/* Optimization Summary */}
+          {optimizationSummary && optimizationSummary.best && (
+            <div className="mb-6 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-lg p-4 flex flex-col md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-sm text-emerald-700 dark:text-emerald-300 font-semibold">Top Optimization</p>
+                <p className="text-lg font-bold text-emerald-900 dark:text-emerald-200">{optimizationSummary.best.finding}</p>
+                <p className="text-sm text-emerald-800 dark:text-emerald-300 mt-1">
+                  {optimizationSummary.best.explanation}
+                </p>
               </div>
-            )}
-            {Math.abs(optimizationSummary.totalEnergySavedWh) > 0 && (
-              <div className="px-3 py-2 rounded-md bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-sm font-semibold">
-                ~{Math.abs(optimizationSummary.totalEnergySavedWh * 1000).toFixed(1)} mWh saved/run
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Full Optimized Code Section */}
-      {result.optimizedCode && result.originalCode ? (
-        <div className="mb-6">
-          <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Full Code Optimization</h4>
-          
-          {/* Analysis Summary */}
-          {result.analysisSummary && (
-            <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg">
-              <p className="text-sm text-blue-900 dark:text-blue-200">{result.analysisSummary}</p>
-            </div>
-          )}
-
-          {/* Comparison Table */}
-          {result.comparisonTable && (
-            <div className="mb-6 overflow-x-auto">
-              <h5 className="text-md font-semibold text-gray-900 dark:text-white mb-3">Performance Comparison</h5>
-              <table className="min-w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-lg">
-                <thead>
-                  <tr className="bg-gray-50 dark:bg-slate-700">
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-b border-gray-200 dark:border-gray-600">Metric</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-red-700 dark:text-red-300 uppercase tracking-wider border-b border-gray-200 dark:border-gray-600">Original</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-green-700 dark:text-green-300 uppercase tracking-wider border-b border-gray-200 dark:border-gray-600">Optimized</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-blue-700 dark:text-blue-300 uppercase tracking-wider border-b border-gray-200 dark:border-gray-600">Improvement</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {result.comparisonTable.green_score && (
-                    <tr>
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">Green Score</td>
-                      <td className="px-4 py-3 text-sm text-red-600 dark:text-red-400">{result.comparisonTable.green_score.original}</td>
-                      <td className="px-4 py-3 text-sm text-green-600 dark:text-green-400 font-semibold">{result.comparisonTable.green_score.optimized}</td>
-                      <td className="px-4 py-3 text-sm text-blue-600 dark:text-blue-400 font-semibold">+{result.comparisonTable.green_score.improvement}</td>
-                    </tr>
-                  )}
-                  {result.comparisonTable.energy_usage && (
-                    <tr>
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">Energy Usage</td>
-                      <td className="px-4 py-3 text-sm text-red-600 dark:text-red-400">{result.comparisonTable.energy_usage.original}</td>
-                      <td className="px-4 py-3 text-sm text-green-600 dark:text-green-400 font-semibold">{result.comparisonTable.energy_usage.optimized}</td>
-                      <td className="px-4 py-3 text-sm text-blue-600 dark:text-blue-400">{result.comparisonTable.energy_usage.improvement}</td>
-                    </tr>
-                  )}
-                  {result.comparisonTable.co2_emissions && (
-                    <tr>
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">CO₂ Emissions</td>
-                      <td className="px-4 py-3 text-sm text-red-600 dark:text-red-400">{result.comparisonTable.co2_emissions.original}</td>
-                      <td className="px-4 py-3 text-sm text-green-600 dark:text-green-400 font-semibold">{result.comparisonTable.co2_emissions.optimized}</td>
-                      <td className="px-4 py-3 text-sm text-blue-600 dark:text-blue-400">{result.comparisonTable.co2_emissions.improvement}</td>
-                    </tr>
-                  )}
-                  {result.comparisonTable.cpu_time && (
-                    <tr>
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">CPU Time</td>
-                      <td className="px-4 py-3 text-sm text-red-600 dark:text-red-400">{result.comparisonTable.cpu_time.original}</td>
-                      <td className="px-4 py-3 text-sm text-green-600 dark:text-green-400 font-semibold">{result.comparisonTable.cpu_time.optimized}</td>
-                      <td className="px-4 py-3 text-sm text-blue-600 dark:text-blue-400">{result.comparisonTable.cpu_time.improvement}</td>
-                    </tr>
-                  )}
-                  {result.comparisonTable.memory_usage && (
-                    <tr>
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">Memory Usage</td>
-                      <td className="px-4 py-3 text-sm text-red-600 dark:text-red-400">{result.comparisonTable.memory_usage.original}</td>
-                      <td className="px-4 py-3 text-sm text-green-600 dark:text-green-400 font-semibold">{result.comparisonTable.memory_usage.optimized}</td>
-                      <td className="px-4 py-3 text-sm text-blue-600 dark:text-blue-400">{result.comparisonTable.memory_usage.improvement}</td>
-                    </tr>
-                  )}
-                  {result.comparisonTable.time_complexity && (
-                    <tr>
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">Time Complexity</td>
-                      <td className="px-4 py-3 text-sm text-red-600 dark:text-red-400">{result.comparisonTable.time_complexity.original}</td>
-                      <td className="px-4 py-3 text-sm text-green-600 dark:text-green-400 font-semibold">{result.comparisonTable.time_complexity.optimized}</td>
-                      <td className="px-4 py-3 text-sm text-blue-600 dark:text-blue-400">{result.comparisonTable.time_complexity.improvement}</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* Code Comparison - Side by Side */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <h5 className="font-semibold text-red-700 dark:text-red-300 flex items-center space-x-2">
-                  <span>Original Code</span>
-                  <span className="text-xs bg-red-100 dark:bg-red-900/30 px-2 py-1 rounded">Inefficient</span>
-                </h5>
-              </div>
-              <pre className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-lg p-4 text-sm overflow-x-auto max-h-96">
-                <code className="text-red-900 dark:text-red-200 font-mono whitespace-pre-wrap">{result.originalCode}</code>
-              </pre>
-            </div>
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <h5 className="font-semibold text-green-700 dark:text-green-300 flex items-center space-x-2">
-                  <span>Optimized Code</span>
-                  <span className="text-xs bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded">Optimized</span>
-                </h5>
-              </div>
-              <pre className="bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800 rounded-lg p-4 text-sm overflow-x-auto max-h-96">
-                <code className="text-green-900 dark:text-green-200 font-mono whitespace-pre-wrap">{result.optimizedCode}</code>
-              </pre>
-            </div>
-          </div>
-
-          {/* Improvements Explanation */}
-          {result.improvementsExplanation && (
-            <div className="mb-4 p-4 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-lg">
-              <h5 className="text-md font-semibold text-emerald-900 dark:text-emerald-200 mb-2">Improvements Applied</h5>
-              <div className="text-sm text-emerald-800 dark:text-emerald-300 whitespace-pre-line">
-                {result.improvementsExplanation}
+              <div className="mt-3 md:mt-0 flex items-center space-x-4">
+                {typeof optimizationSummary.best.predicted_improvement?.green_score === 'number' && (
+                  <div className="px-3 py-2 rounded-md bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-sm font-semibold">
+                    +{optimizationSummary.best.predicted_improvement.green_score} Green Score
+                  </div>
+                )}
+                {Math.abs(optimizationSummary.totalEnergySavedWh) > 0 && (
+                  <div className="px-3 py-2 rounded-md bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-sm font-semibold">
+                    ~{Math.abs(optimizationSummary.totalEnergySavedWh * 1000).toFixed(1)} mWh saved/run
+                  </div>
+                )}
               </div>
             </div>
           )}
 
-          {/* Expected Improvement */}
-          {result.expectedGreenScoreImprovement && (
-            <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 border border-green-200 dark:border-green-800 rounded-lg">
-              <p className="text-sm font-semibold text-green-900 dark:text-green-200">
-                🎯 {result.expectedGreenScoreImprovement}
+          {/* Full Optimized Code Section */}
+          {result.optimizedCode && result.originalCode ? (
+            <div className="mb-6">
+              <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Full Code Optimization</h4>
+
+              {/* Analysis Summary */}
+              {result.analysisSummary && (
+                <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <p className="text-sm text-blue-900 dark:text-blue-200">{result.analysisSummary}</p>
+                </div>
+              )}
+
+              {/* Comparison Table */}
+              {result.comparisonTable && (
+                <div className="mb-6 overflow-x-auto">
+                  <h5 className="text-md font-semibold text-gray-900 dark:text-white mb-3">Performance Comparison</h5>
+                  <table className="min-w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                    <thead>
+                      <tr className="bg-gray-50 dark:bg-slate-700">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider border-b border-gray-200 dark:border-gray-600">Metric</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-red-700 dark:text-red-300 uppercase tracking-wider border-b border-gray-200 dark:border-gray-600">Original</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-green-700 dark:text-green-300 uppercase tracking-wider border-b border-gray-200 dark:border-gray-600">Optimized</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-blue-700 dark:text-blue-300 uppercase tracking-wider border-b border-gray-200 dark:border-gray-600">Improvement</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                      {result.comparisonTable.green_score && (
+                        <tr>
+                          <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">Green Score</td>
+                          <td className="px-4 py-3 text-sm text-red-600 dark:text-red-400">{result.comparisonTable.green_score.original}</td>
+                          <td className="px-4 py-3 text-sm text-green-600 dark:text-green-400 font-semibold">{result.comparisonTable.green_score.optimized}</td>
+                          <td className="px-4 py-3 text-sm text-blue-600 dark:text-blue-400 font-semibold">+{result.comparisonTable.green_score.improvement}</td>
+                        </tr>
+                      )}
+                      {result.comparisonTable.energy_usage && (
+                        <tr>
+                          <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">Energy Usage</td>
+                          <td className="px-4 py-3 text-sm text-red-600 dark:text-red-400">{result.comparisonTable.energy_usage.original}</td>
+                          <td className="px-4 py-3 text-sm text-green-600 dark:text-green-400 font-semibold">{result.comparisonTable.energy_usage.optimized}</td>
+                          <td className="px-4 py-3 text-sm text-blue-600 dark:text-blue-400">{result.comparisonTable.energy_usage.improvement}</td>
+                        </tr>
+                      )}
+                      {result.comparisonTable.co2_emissions && (
+                        <tr>
+                          <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">CO₂ Emissions</td>
+                          <td className="px-4 py-3 text-sm text-red-600 dark:text-red-400">{result.comparisonTable.co2_emissions.original}</td>
+                          <td className="px-4 py-3 text-sm text-green-600 dark:text-green-400 font-semibold">{result.comparisonTable.co2_emissions.optimized}</td>
+                          <td className="px-4 py-3 text-sm text-blue-600 dark:text-blue-400">{result.comparisonTable.co2_emissions.improvement}</td>
+                        </tr>
+                      )}
+                      {result.comparisonTable.cpu_time && (
+                        <tr>
+                          <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">CPU Time</td>
+                          <td className="px-4 py-3 text-sm text-red-600 dark:text-red-400">{result.comparisonTable.cpu_time.original}</td>
+                          <td className="px-4 py-3 text-sm text-green-600 dark:text-green-400 font-semibold">{result.comparisonTable.cpu_time.optimized}</td>
+                          <td className="px-4 py-3 text-sm text-blue-600 dark:text-blue-400">{result.comparisonTable.cpu_time.improvement}</td>
+                        </tr>
+                      )}
+                      {result.comparisonTable.memory_usage && (
+                        <tr>
+                          <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">Memory Usage</td>
+                          <td className="px-4 py-3 text-sm text-red-600 dark:text-red-400">{result.comparisonTable.memory_usage.original}</td>
+                          <td className="px-4 py-3 text-sm text-green-600 dark:text-green-400 font-semibold">{result.comparisonTable.memory_usage.optimized}</td>
+                          <td className="px-4 py-3 text-sm text-blue-600 dark:text-blue-400">{result.comparisonTable.memory_usage.improvement}</td>
+                        </tr>
+                      )}
+                      {result.comparisonTable.time_complexity && (
+                        <tr>
+                          <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">Time Complexity</td>
+                          <td className="px-4 py-3 text-sm text-red-600 dark:text-red-400">{result.comparisonTable.time_complexity.original}</td>
+                          <td className="px-4 py-3 text-sm text-green-600 dark:text-green-400 font-semibold">{result.comparisonTable.time_complexity.optimized}</td>
+                          <td className="px-4 py-3 text-sm text-blue-600 dark:text-blue-400">{result.comparisonTable.time_complexity.improvement}</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Code Comparison - Side by Side */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h5 className="font-semibold text-red-700 dark:text-red-300 flex items-center space-x-2">
+                      <span>Original Code</span>
+                      <span className="text-xs bg-red-100 dark:bg-red-900/30 px-2 py-1 rounded">Inefficient</span>
+                    </h5>
+                  </div>
+                  <pre className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-lg p-4 text-sm overflow-x-auto max-h-96">
+                    <code className="text-red-900 dark:text-red-200 font-mono whitespace-pre-wrap">{result.originalCode}</code>
+                  </pre>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h5 className="font-semibold text-green-700 dark:text-green-300 flex items-center space-x-2">
+                      <span>Optimized Code</span>
+                      <span className="text-xs bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded">Optimized</span>
+                    </h5>
+                  </div>
+                  <pre className="bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800 rounded-lg p-4 text-sm overflow-x-auto max-h-96">
+                    <code className="text-green-900 dark:text-green-200 font-mono whitespace-pre-wrap">{result.optimizedCode}</code>
+                  </pre>
+                </div>
+              </div>
+
+              {/* Improvements Explanation */}
+              {result.improvementsExplanation && (
+                <div className="mb-4 p-4 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 rounded-lg">
+                  <h5 className="text-md font-semibold text-emerald-900 dark:text-emerald-200 mb-2">Improvements Applied</h5>
+                  <div className="text-sm text-emerald-800 dark:text-emerald-300 whitespace-pre-line">
+                    {result.improvementsExplanation}
+                  </div>
+                </div>
+              )}
+
+              {/* Expected Improvement */}
+              {result.expectedGreenScoreImprovement && (
+                <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 border border-green-200 dark:border-green-800 rounded-lg">
+                  <p className="text-sm font-semibold text-green-900 dark:text-green-200">
+                    🎯 {result.expectedGreenScoreImprovement}
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : result.codeSuggestions && result.codeSuggestions.length > 0 ? (
+            <div className="mb-6">
+              <CodeComparison suggestions={result.codeSuggestions} />
+            </div>
+          ) : (
+            <div className="mb-6 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+              <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Optimized Code</h4>
+              <p className="text-sm text-gray-700 dark:text-gray-300">
+                The analyzer did not return optimized code for this submission.
               </p>
             </div>
           )}
-        </div>
-      ) : result.codeSuggestions && result.codeSuggestions.length > 0 ? (
-        <div className="mb-6">
-          <CodeComparison suggestions={result.codeSuggestions} />
-        </div>
-      ) : (
-        <div className="mb-6 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-gray-600 rounded-lg p-4">
-          <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Optimized Code</h4>
-          <p className="text-sm text-gray-700 dark:text-gray-300">
-            The analyzer did not return optimized code for this submission.
-          </p>
-        </div>
-      )}
 
           {/* Simple Text Suggestions */}
           {result.suggestions && result.suggestions.length > 0 && (

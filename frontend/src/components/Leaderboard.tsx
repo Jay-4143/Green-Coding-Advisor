@@ -22,6 +22,7 @@ interface MyPerformance {
   rank: number | null
   greenScore: number
   carbonSaved: number
+  submissions: number
 }
 
 const Leaderboard: React.FC = () => {
@@ -29,7 +30,7 @@ const Leaderboard: React.FC = () => {
   const [loading, setLoading] = useState(true)
   const [timeframe, setTimeframe] = useState<'week' | 'month' | 'all'>('month')
   const [me, setMe] = useState<{ id: number | null; username: string | null }>({ id: null, username: null })
-  const [myPerf, setMyPerf] = useState<MyPerformance>({ rank: null, greenScore: 0, carbonSaved: 0 })
+  const [myPerf, setMyPerf] = useState<MyPerformance>({ rank: null, greenScore: 0, carbonSaved: 0, submissions: 0 })
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
@@ -55,12 +56,13 @@ const Leaderboard: React.FC = () => {
               rank: myEntry?.rank ?? null,
               greenScore: summary.average_green_score || 0,
               carbonSaved: summary.total_co2_saved || 0,
+              submissions: summary.total_submissions || 0
             })
           } catch (e) {
             setMyPerf((prev) => ({ ...prev, rank: null }))
           }
         } else {
-          setMyPerf({ rank: null, greenScore: 0, carbonSaved: 0 })
+          setMyPerf({ rank: null, greenScore: 0, carbonSaved: 0, submissions: 0 })
         }
       } catch (error) {
         console.error('Error fetching leaderboard:', error)
@@ -99,9 +101,9 @@ const Leaderboard: React.FC = () => {
         )
       default:
         return (
-            <div className="flex items-center justify-center w-8 h-8 bg-gray-100 dark:bg-slate-700 rounded-full">
-              <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{rank}</span>
-            </div>
+          <div className="flex items-center justify-center w-8 h-8 bg-gray-100 dark:bg-slate-700 rounded-full">
+            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{rank}</span>
+          </div>
         )
     }
   }
@@ -138,31 +140,28 @@ const Leaderboard: React.FC = () => {
         <div className="flex space-x-4">
           <button
             onClick={() => setTimeframe('week')}
-            className={`px-4 py-2 rounded-md text-sm font-medium ${
-              timeframe === 'week'
-                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-            }`}
+            className={`px-4 py-2 rounded-md text-sm font-medium ${timeframe === 'week'
+              ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+              }`}
           >
             This Week
           </button>
           <button
             onClick={() => setTimeframe('month')}
-            className={`px-4 py-2 rounded-md text-sm font-medium ${
-              timeframe === 'month'
-                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-            }`}
+            className={`px-4 py-2 rounded-md text-sm font-medium ${timeframe === 'month'
+              ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+              }`}
           >
             This Month
           </button>
           <button
             onClick={() => setTimeframe('all')}
-            className={`px-4 py-2 rounded-md text-sm font-medium ${
-              timeframe === 'all'
-                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-            }`}
+            className={`px-4 py-2 rounded-md text-sm font-medium ${timeframe === 'all'
+              ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+              }`}
           >
             All Time
           </button>
@@ -174,58 +173,57 @@ const Leaderboard: React.FC = () => {
         <div className="px-6 py-4 border-b border-gray-200 dark:border-slate-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Top Performers</h2>
         </div>
-        
+
         <StaggerContainer className="divide-y divide-gray-200 dark:divide-slate-700" staggerDelay={0.05}>
           {leaderboard.map((entry) => (
             <StaggerItem key={entry.rank}>
-              <motion.div 
+              <motion.div
                 className="px-6 py-4 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
                 whileHover={{ x: 5 }}
               >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  {getRankIcon(entry.rank)}
-                  
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3">
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-white">{entry.username}</h3>
-                      {entry.badges.length > 0 && (
-                        <div className="flex space-x-1">
-                          {entry.badges.map((badge, index) => (
-                            <span
-                              key={index}
-                              className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300"
-                            >
-                              {badge}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center space-x-4 mt-1">
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
-                        {entry.submissions} submissions
-                      </span>
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
-                        {entry.carbonSaved} kg CO₂ saved
-                      </span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    {getRankIcon(entry.rank)}
+
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3">
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-white">{entry.username}</h3>
+                        {entry.badges.length > 0 && (
+                          <div className="flex space-x-1">
+                            {entry.badges.map((badge, index) => (
+                              <span
+                                key={index}
+                                className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300"
+                              >
+                                {badge}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center space-x-4 mt-1">
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                          {entry.submissions} submissions
+                        </span>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                          {entry.carbonSaved} kg CO₂ saved
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-                
-                <div className="text-right">
-                  <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                    entry.greenScore >= 90 ? 'text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30' :
-                    entry.greenScore >= 80 ? 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30' :
-                    entry.greenScore >= 70 ? 'text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/30' :
-                    'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30'
-                  }`}>
-                    {entry.greenScore}/100
+
+                  <div className="text-right">
+                    <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${entry.greenScore >= 90 ? 'text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30' :
+                      entry.greenScore >= 80 ? 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30' :
+                        entry.greenScore >= 70 ? 'text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/30' :
+                          'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30'
+                      }`}>
+                      {entry.greenScore}/100
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Green Score</p>
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Green Score</p>
                 </div>
-              </div>
               </motion.div>
             </StaggerItem>
           ))}
@@ -266,30 +264,49 @@ const Leaderboard: React.FC = () => {
           <div>
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Carbon Saver</span>
-              <span className="text-sm text-gray-500 dark:text-gray-400">2.4/5.0 kg CO₂</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                {(myPerf.carbonSaved / 1000).toFixed(1)} / 5.0 kg CO₂
+              </span>
             </div>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-              <div className="bg-green-500 h-2 rounded-full" style={{ width: '48%' }}></div>
+              <div
+                className="bg-green-500 h-2 rounded-full"
+                style={{ width: `${Math.min((myPerf.carbonSaved / 5000) * 100, 100)}%` }}
+              ></div>
             </div>
           </div>
-          
+
           <div>
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Eco-Friendly Champion</span>
-              <span className="text-sm text-gray-500 dark:text-gray-400">24/50 submissions</span>
+              {/* Assuming myPerf could have submissions count, otherwise defaulting or using a placeholder derived from score/carbon. 
+                  Since we didn't add submissions to MyPerformance interface in the previous step, we'll try to use a safe fallback or update state.
+                  But I'll update the state interface first.
+              */}
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                {(myPerf as any).submissions || 0} / 50 submissions
+              </span>
             </div>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-              <div className="bg-blue-500 h-2 rounded-full" style={{ width: '48%' }}></div>
+              <div
+                className="bg-blue-500 h-2 rounded-full"
+                style={{ width: `${Math.min((((myPerf as any).submissions || 0) / 50) * 100, 100)}%` }}
+              ></div>
             </div>
           </div>
-          
+
           <div>
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Efficient Coder</span>
-              <span className="text-sm text-gray-500 dark:text-gray-400">Achieved!</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                {myPerf.greenScore >= 90 ? 'Achieved!' : `${myPerf.greenScore.toFixed(0)}/90 Score`}
+              </span>
             </div>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-              <div className="bg-green-500 h-2 rounded-full" style={{ width: '100%' }}></div>
+              <div
+                className="bg-purple-500 h-2 rounded-full"
+                style={{ width: `${Math.min((myPerf.greenScore / 90) * 100, 100)}%` }}
+              ></div>
             </div>
           </div>
         </div>
