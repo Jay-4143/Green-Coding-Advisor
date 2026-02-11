@@ -1,7 +1,179 @@
-# Green Coding Advisor - AI‑Enhanced Web Platform
+# 🌱 Green Coding Advisor  
+### AI-Enhanced Sustainable Code Optimization Platform
 
-## Overview
-Web-based, AI-enhanced platform to analyze code sustainability, provide optimization suggestions, track carbon footprint, and gamify progress.
+---
+
+## 🚀 Overview
+
+Green Coding Advisor is an AI-enhanced web platform designed to analyze source code sustainability, detect inefficient patterns, suggest optimized alternatives, calculate a Green Score (0–100), estimate carbon footprint impact, and gamify eco-friendly development practices.
+
+The platform promotes sustainable software engineering by helping developers reduce computational waste, CPU usage, memory overhead, and inefficient algorithmic patterns.
+
+---
+## 🎯 Problem Statement
+
+Modern software development often prioritizes functionality over efficiency, leading to:
+
+- High CPU consumption
+- Excessive memory usage
+- Poor asynchronous handling
+- Redundant iterations
+- Increased energy consumption
+
+Green Coding Advisor provides intelligent insights to help developers write optimized and environmentally responsible code.
+
+---
+
+## 🧠 Core Features
+
+### 🔍 Static Code Analysis
+- Detects inefficient patterns using:
+  - Regex-based pattern detection
+  - AST (Abstract Syntax Tree) parsing
+- Multi-language support:
+  - Python
+  - JavaScript
+  - Java
+  - C++
+
+---
+
+### ⚡ Intelligent Code Optimization
+- Deterministic “Detect & Replace” strategy
+- Predefined verified transformation templates
+- Avoids AI hallucination
+- Guarantees syntactically correct optimized output
+
+**Example Optimizations:**
+- `for i in range(len(list))` → Direct iteration
+- `await` inside loop → `Promise.all()` (parallel execution)
+- `String +=` in loops → `StringBuilder`
+- `innerHTML +=` → DOM-efficient approach
+
+---
+
+### 🌿 Green Score (0–100)
+
+Dynamic sustainability metric calculated using:
+
+**Penalties:**
+- Severe inefficiencies
+- Code complexity
+- File size impact
+
+**Bonuses:**
+- Efficient built-in functions
+- Functional programming constructs
+- High-performance patterns
+- Clean structure (functions/classes)
+
+This provides immediate gamified feedback on code sustainability.
+
+---
+
+### 🌍 Carbon Footprint Estimation
+- Estimates computational overhead
+- Displays sustainability improvement after optimization
+- Encourages eco-friendly coding habits
+
+---
+
+### 🎮 Gamification System
+- Real-time score updates
+- Optimization comparison view
+- Improvement tracking
+
+---
+
+### 📊 Diff Visualization
+- Side-by-side:
+  - Original Code
+  - Optimized Code
+- Highlights replaced sections
+- Displays Green Score improvement
+
+---
+
+## 🏗️ System Architecture
+
+### Hybrid Optimization Engine
+
+1. Pattern Recognition Layer (Regex + AST)
+2. Deterministic Transformation Engine
+3. Heuristic-Based Green Scoring System
+4. AI-Assisted Sustainability Analysis
+
+This ensures reliability, explainability, and syntactically correct optimizations.
+
+---
+
+## 🛠️ Technology Stack
+
+### Backend
+- Python
+- FastAPI
+- Uvicorn
+- Custom Regex Engine
+- AST Parsing
+
+### Frontend
+- React
+- Vite
+- Tailwind CSS
+
+### DevOps
+- Docker
+- Docker Compose
+
+---
+---
+
+# 📸 Application Screenshots
+
+## 🏠 Home Page
+![screenshots/home.png](https://github.com/Jay-4143/Green-Coding-Advisor/blob/3ac2279ea05cf9e33950b28bac89fc8d51de610f/Images/Screenshots/Home.png)
+
+---
+
+## 📞 Contact Us
+![screenshots/contact.png](https://github.com/Jay-4143/Green-Coding-Advisor/blob/3ac2279ea05cf9e33950b28bac89fc8d51de610f/Images/Screenshots/Contact%20Us.png)
+
+---
+
+## 🔐 Login Page
+![Images/Screenshots/Login.png](https://github.com/Jay-4143/Green-Coding-Advisor/blob/3ac2279ea05cf9e33950b28bac89fc8d51de610f/Images/Screenshots/Login.png)
+
+---
+
+## 👤 User Dashboard
+![screenshots/user-dashboard.png](https://github.com/Jay-4143/Green-Coding-Advisor/blob/3ac2279ea05cf9e33950b28bac89fc8d51de610f/Images/Screenshots/User%20dashboard.png)
+
+---
+
+## 📊 Dashboard Analytics
+![screenshots/dashboard-2.png](https://github.com/Jay-4143/Green-Coding-Advisor/blob/3ac2279ea05cf9e33950b28bac89fc8d51de610f/Images/Screenshots/dashboard%202.png)
+
+---
+
+## 📤 Code Submission Page
+![screenshots/submission.png](https://github.com/Jay-4143/Green-Coding-Advisor/blob/3ac2279ea05cf9e33950b28bac89fc8d51de610f/Images/Screenshots/Submission%20page.png)
+
+---
+
+## 🔎 Code Analysis Result
+![screenshots/analysis.png](https://github.com/Jay-4143/Green-Coding-Advisor/blob/3ac2279ea05cf9e33950b28bac89fc8d51de610f/Images/Screenshots/Analysis.png)
+
+---
+
+## 🏆 Leaderboard
+![screenshots/leaderboard.png](https://github.com/Jay-4143/Green-Coding-Advisor/blob/3ac2279ea05cf9e33950b28bac89fc8d51de610f/Images/Screenshots/Leaderboard.png)
+
+---
+
+## 🛠️ Admin Dashboard
+![screenshots/admin-dashboard.png](https://github.com/Jay-4143/Green-Coding-Advisor/blob/3ac2279ea05cf9e33950b28bac89fc8d51de610f/Images/Screenshots/Admin%20dashboard.png)
+
+---
 
 ## Backend (FastAPI)
 
