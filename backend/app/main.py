@@ -35,7 +35,7 @@ async def lifespan(app: FastAPI):
     
     # Initialize default badges and indexes
     try:
-        db = await get_mongo_db().__anext__()
+        db = await get_mongo_db()
         await badge_service.initialize_default_badges(db)
         green_logger.logger.info("Default badges initialized")
         

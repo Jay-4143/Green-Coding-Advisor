@@ -253,7 +253,7 @@ function Layout({ children }: { children: React.ReactNode }) {
               <img
                 src="/images/logo1.png"
                 alt="Green Coding Advisor Logo"
-                className="h-20 w-auto"
+                className="h-32 w-auto transform hover:scale-105 transition-transform duration-300 drop-shadow-xl"
                 onError={(e) => {
                   // Fallback to gradient if image fails to load
                   const target = e.target as HTMLImageElement
@@ -522,8 +522,8 @@ function Layout({ children }: { children: React.ReactNode }) {
 function Page({ title, children }: { title: string; children?: React.ReactNode }) {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="rounded-lg border bg-white p-6 shadow-sm">
-        <h2 className="text-2xl font-bold mb-4 text-gray-900">{title}</h2>
+      <div className="rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
+        <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">{title}</h2>
         {children}
       </div>
     </div>
@@ -558,43 +558,43 @@ function Analysis() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-slate-600">File</p>
-            <p className="font-medium">{data.filename}</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400">File</p>
+            <p className="font-medium text-gray-900 dark:text-gray-100">{data.filename}</p>
           </div>
           <div>
-            <p className="text-sm text-slate-600">Language</p>
-            <p className="font-medium capitalize">{data.language}</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400">Language</p>
+            <p className="font-medium text-gray-900 dark:text-gray-100 capitalize">{data.language}</p>
           </div>
         </div>
 
         <div>
           <div className="flex items-center justify-between mb-2">
-            <h4 className="text-lg font-semibold text-gray-900">Green Score</h4>
-            <span className="px-3 py-1 rounded-full text-sm font-medium bg-emerald-100 text-emerald-800">
+            <h4 className="text-lg font-semibold text-gray-900 dark:text-white">Green Score</h4>
+            <span className="px-3 py-1 rounded-full text-sm font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300">
               {data.greenScore}/100
             </span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-3">
+          <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-3">
             <div className={`h-3 rounded-full ${getScoreColor(data.greenScore)}`} style={{ width: `${data.greenScore}%` }}></div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-blue-50 rounded-lg p-3">
-            <p className="text-sm text-blue-600">Energy</p>
-            <p className="text-lg font-semibold text-blue-900">{Number(data.energyConsumption).toFixed(2)} Wh</p>
+          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-100 dark:border-blue-800/50">
+            <p className="text-sm text-blue-600 dark:text-blue-400">Energy</p>
+            <p className="text-lg font-semibold text-blue-900 dark:text-blue-100">{Number(data.energyConsumption).toFixed(2)} Wh</p>
           </div>
-          <div className="bg-green-50 rounded-lg p-3">
-            <p className="text-sm text-green-600">CO₂</p>
-            <p className="text-lg font-semibold text-green-900">{Number(data.co2Emissions).toFixed(3)} g</p>
+          <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 border border-green-100 dark:border-green-800/50">
+            <p className="text-sm text-green-600 dark:text-green-400">CO₂</p>
+            <p className="text-lg font-semibold text-green-900 dark:text-green-100">{Number(data.co2Emissions).toFixed(3)} g</p>
           </div>
-          <div className="bg-purple-50 rounded-lg p-3">
-            <p className="text-sm text-purple-600">Memory</p>
-            <p className="text-lg font-semibold text-purple-900">{Number(data.memoryUsage).toFixed(1)} MB</p>
+          <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3 border border-purple-100 dark:border-purple-800/50">
+            <p className="text-sm text-purple-600 dark:text-purple-400">Memory</p>
+            <p className="text-lg font-semibold text-purple-900 dark:text-purple-100">{Number(data.memoryUsage).toFixed(1)} MB</p>
           </div>
-          <div className="bg-orange-50 rounded-lg p-3">
-            <p className="text-sm text-orange-600">CPU Time</p>
-            <p className="text-lg font-semibold text-orange-900">{Number(data.cpuTime).toFixed(1)} ms</p>
+          <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-3 border border-orange-100 dark:border-orange-800/50">
+            <p className="text-sm text-orange-600 dark:text-orange-400">CPU Time</p>
+            <p className="text-lg font-semibold text-orange-900 dark:text-orange-100">{Number(data.cpuTime).toFixed(1)} ms</p>
           </div>
         </div>
 
@@ -603,19 +603,19 @@ function Analysis() {
           const impact = data.realWorldImpact || data.real_world_impact || data.analysis_details?.real_world_impact || {}
           return (
             <div className="mb-4">
-              <h4 className="text-lg font-semibold text-gray-900 mb-3">Real-World Impact</h4>
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200">
-                <p className="text-sm text-gray-700 mb-3 font-medium">
+              <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Real-World Impact</h4>
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-lg p-4 border border-green-200 dark:border-emerald-800/50">
+                <p className="text-sm text-gray-700 dark:text-gray-300 mb-3 font-medium">
                   {impact.description || `Running this code 1M times would:`}
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {impact.light_bulb_hours && (
-                    <div className="bg-white rounded-lg p-3 border border-green-200">
+                    <div className="bg-white dark:bg-slate-800 rounded-lg p-3 border border-green-200 dark:border-emerald-700/50">
                       <div className="flex items-center space-x-2">
                         <span className="text-2xl">💡</span>
                         <div>
-                          <p className="text-xs text-gray-500">Light Bulb Hours</p>
-                          <p className="text-lg font-bold text-green-700">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Light Bulb Hours</p>
+                          <p className="text-lg font-bold text-green-700 dark:text-green-400">
                             {Number(impact.light_bulb_hours).toFixed(1)} hrs
                           </p>
                         </div>
@@ -623,12 +623,12 @@ function Analysis() {
                     </div>
                   )}
                   {impact.tree_planting_days && (
-                    <div className="bg-white rounded-lg p-3 border border-green-200">
+                    <div className="bg-white dark:bg-slate-800 rounded-lg p-3 border border-green-200 dark:border-emerald-700/50">
                       <div className="flex items-center space-x-2">
                         <span className="text-2xl">🌳</span>
                         <div>
-                          <p className="text-xs text-gray-500">Tree Planting Days</p>
-                          <p className="text-lg font-bold text-green-700">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Tree Planting Days</p>
+                          <p className="text-lg font-bold text-green-700 dark:text-green-400">
                             {Number(impact.tree_planting_days).toFixed(1)} days
                           </p>
                         </div>
@@ -636,12 +636,12 @@ function Analysis() {
                     </div>
                   )}
                   {impact.car_miles && (
-                    <div className="bg-white rounded-lg p-3 border border-green-200">
+                    <div className="bg-white dark:bg-slate-800 rounded-lg p-3 border border-green-200 dark:border-emerald-700/50">
                       <div className="flex items-center space-x-2">
                         <span className="text-2xl">🚗</span>
                         <div>
-                          <p className="text-xs text-gray-500">Car Miles</p>
-                          <p className="text-lg font-bold text-green-700">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Car Miles</p>
+                          <p className="text-lg font-bold text-green-700 dark:text-green-400">
                             {Number(impact.car_miles).toFixed(4)} miles
                           </p>
                         </div>
@@ -662,31 +662,31 @@ function Analysis() {
             {/* Comparison Table */}
             {data.comparisonTable && (
               <div className="mb-6 overflow-x-auto">
-                <h5 className="text-md font-semibold text-gray-900 mb-3">Performance Comparison</h5>
-                <table className="min-w-full bg-white border border-gray-200 rounded-lg">
+                <h5 className="text-md font-semibold text-gray-900 dark:text-white mb-3">Performance Comparison</h5>
+                <table className="min-w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg">
                   <thead>
-                    <tr className="bg-gray-50">
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Metric</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-red-700 uppercase">Original</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-green-700 uppercase">Optimized</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-blue-700 uppercase">Improvement</th>
+                    <tr className="bg-gray-50 dark:bg-slate-700">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">Metric</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-red-700 dark:text-red-400 uppercase">Original</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-green-700 dark:text-green-400 uppercase">Optimized</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-blue-700 dark:text-blue-400 uppercase">Improvement</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
                     {data.comparisonTable.green_score && (
                       <tr>
-                        <td className="px-4 py-3 text-sm font-medium">Green Score</td>
-                        <td className="px-4 py-3 text-sm text-red-600">{data.comparisonTable.green_score.original}</td>
-                        <td className="px-4 py-3 text-sm text-green-600 font-semibold">{data.comparisonTable.green_score.optimized}</td>
-                        <td className="px-4 py-3 text-sm text-blue-600 font-semibold">+{data.comparisonTable.green_score.improvement}</td>
+                        <td className="px-4 py-3 text-sm font-medium dark:text-gray-200">Green Score</td>
+                        <td className="px-4 py-3 text-sm text-red-600 dark:text-red-400">{data.comparisonTable.green_score.original}</td>
+                        <td className="px-4 py-3 text-sm text-green-600 dark:text-green-400 font-semibold">{data.comparisonTable.green_score.optimized}</td>
+                        <td className="px-4 py-3 text-sm text-blue-600 dark:text-blue-400 font-semibold">+{data.comparisonTable.green_score.improvement}</td>
                       </tr>
                     )}
                     {data.comparisonTable.energy_usage && (
                       <tr>
-                        <td className="px-4 py-3 text-sm font-medium">Energy Usage</td>
-                        <td className="px-4 py-3 text-sm text-red-600">{data.comparisonTable.energy_usage.original}</td>
-                        <td className="px-4 py-3 text-sm text-green-600 font-semibold">{data.comparisonTable.energy_usage.optimized}</td>
-                        <td className="px-4 py-3 text-sm text-blue-600">{data.comparisonTable.energy_usage.improvement}</td>
+                        <td className="px-4 py-3 text-sm font-medium dark:text-gray-200">Energy Usage</td>
+                        <td className="px-4 py-3 text-sm text-red-600 dark:text-red-400">{data.comparisonTable.energy_usage.original}</td>
+                        <td className="px-4 py-3 text-sm text-green-600 dark:text-green-400 font-semibold">{data.comparisonTable.energy_usage.optimized}</td>
+                        <td className="px-4 py-3 text-sm text-blue-600 dark:text-blue-400">{data.comparisonTable.energy_usage.improvement}</td>
                       </tr>
                     )}
                   </tbody>
@@ -697,22 +697,22 @@ function Analysis() {
             {/* Code Comparison */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
               <div>
-                <h5 className="font-semibold text-red-700 mb-2">Original Code</h5>
-                <pre className="bg-red-50 border-2 border-red-200 rounded-lg p-4 text-sm overflow-x-auto max-h-96">
-                  <code className="text-red-900 font-mono whitespace-pre-wrap">{data.originalCode}</code>
+                <h5 className="font-semibold text-red-700 dark:text-red-400 mb-2">Original Code</h5>
+                <pre className="bg-red-50 dark:bg-red-900/10 border-2 border-red-200 dark:border-red-900/30 rounded-lg p-4 text-sm overflow-x-auto max-h-96">
+                  <code className="text-red-900 dark:text-red-300 font-mono whitespace-pre-wrap">{data.originalCode}</code>
                 </pre>
               </div>
               <div>
-                <h5 className="font-semibold text-green-700 mb-2">Optimized Code</h5>
-                <pre className="bg-green-50 border-2 border-green-200 rounded-lg p-4 text-sm overflow-x-auto max-h-96">
-                  <code className="text-green-900 font-mono whitespace-pre-wrap">{data.optimizedCode}</code>
+                <h5 className="font-semibold text-green-700 dark:text-green-400 mb-2">Optimized Code</h5>
+                <pre className="bg-green-50 dark:bg-green-900/10 border-2 border-green-200 dark:border-green-900/30 rounded-lg p-4 text-sm overflow-x-auto max-h-96">
+                  <code className="text-green-900 dark:text-green-300 font-mono whitespace-pre-wrap">{data.optimizedCode}</code>
                 </pre>
               </div>
             </div>
 
             {data.expectedGreenScoreImprovement && (
-              <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg">
-                <p className="text-sm font-semibold text-green-900">
+              <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-emerald-800/50 rounded-lg">
+                <p className="text-sm font-semibold text-green-900 dark:text-emerald-300">
                   🎯 {data.expectedGreenScoreImprovement}
                 </p>
               </div>
@@ -720,8 +720,8 @@ function Analysis() {
           </div>
         ) : Array.isArray(data.suggestions) && data.suggestions.length > 0 && (
           <div>
-            <h4 className="text-lg font-semibold text-gray-900 mb-2">Optimization Suggestions</h4>
-            <ul className="list-disc pl-5 space-y-1 text-sm text-slate-700">
+            <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Optimization Suggestions</h4>
+            <ul className="list-disc pl-5 space-y-1 text-sm text-slate-700 dark:text-slate-300">
               {data.suggestions.map((s: string, i: number) => (
                 <li key={i}>{s}</li>
               ))}
@@ -878,7 +878,7 @@ function Analysis() {
 function NotFound() {
   return (
     <Page title="Not Found">
-      <p>The page you're looking for doesn't exist.</p>
+      <p className="text-gray-700 dark:text-gray-300">The page you're looking for doesn't exist.</p>
     </Page>
   )
 }

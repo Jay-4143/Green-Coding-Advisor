@@ -1,10 +1,33 @@
 #!/usr/bin/env python
 """Start the FastAPI server with proper error handling"""
 import sys
-import uvicorn
+import os
 import traceback
 
+def check_environment():
+    """Verify that we are running in the expected environment"""
+    try:
+        import uvicorn
+        return True
+    except ImportError:
+        print("\n" + "!" * 60)
+        print("ERROR: Could not find 'uvicorn' module.")
+        print("-" * 60)
+        print(f"Current Python: {sys.executable}")
+        print(f"Path searching in: {sys.path}")
+        print("-" * 60)
+        print("\nPOSSIBLE FIXES:")
+        print("1. Run the server using the batch script: start_server.bat")
+        print("2. Activate your virtual environment: source venv/bin/activate (Linux/Mac) or venv\\Scripts\\activate (Windows)")
+        print("3. Install dependencies: pip install -r requirements.txt")
+        print("!" * 60 + "\n")
+        return False
+
 def main():
+    if not check_environment():
+        sys.exit(1)
+        
+    import uvicorn
     try:
         print("Starting Green Coding Advisor Backend Server...")
         print("=" * 60)

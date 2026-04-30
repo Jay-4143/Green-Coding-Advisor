@@ -2277,34 +2277,13 @@ class GreenCodingPredictor:
         }
 
     def _optimize_python_code(self, code: str) -> str:
-        """Generate fully optimized Python code using AST and pattern matching"""
-        # 0. Optimization: Batch I/O in loops (Specific User Request)
-        # Run this first to handle structural changes for print loops
+        """Generate fully optimized Python code using pattern matching"""
+        # Step 1: Optimize I/O patterns (print in loops -> buffered)
         optimized = self._optimize_io_loops(code)
         
-        # Call the robust function body optimizer on the code
+        # Step 2: Apply comprehensive code transformations
         optimized = self._optimize_function_body(optimized, language="python")
         
-        # Fallback: If code is already efficient (no changes), apply "Global Polish"
-        # so the user sees a Green Score improvement and validation
-        def normalize(c): return re.sub(r'\s+', ' ', c).strip()
-        
-        if normalize(optimized) == normalize(code):
-            # 1. Add Docstring if missing
-            if not code.strip().startswith('"""') and not code.strip().startswith("'''"):
-                docstring = '"""\nOptimized by Green Coding Advisor\n- Scanned for inefficient patterns (none found)\n- Verified efficient resource usage\n"""\n'
-                optimized = docstring + optimized
-                
-            # 2. Annotate Context Managers (with open)
-            if "with open(" in optimized:
-                # Add a comment if not present
-                if "# Efficient file handling" not in optimized:
-                    optimized = optimized.replace("with open(", "# Efficient file handling with context manager\nwith open(")
-            
-            # 3. Annotate Streamlit/Pandas usage
-            if "import streamlit" in optimized or "import pandas" in optimized:
-                pass # Just the docstring might be enough, but let's ensure score impact
-                
         return optimized
 
     def _optimize_io_loops(self, code: str) -> str:
@@ -2435,14 +2414,13 @@ class GreenCodingPredictor:
 
 
     def _optimize_function_body(self, code: str, language: str = None) -> str:
-        """Optimize a block of code (improved patterns with robust lookahead)"""
+        """Optimize a block of code with comprehensive pattern matching"""
         lines = code.split('\n')
         result_lines = []
         i = 0
         
         while i < len(lines):
             line = lines[i]
-            # Preserve original indentation
             stripped = line.lstrip()
             if not stripped:
                 result_lines.append(line)
@@ -2452,111 +2430,201 @@ class GreenCodingPredictor:
             indent = len(line) - len(stripped)
             indent_str = line[:indent]
             
-            # Helper to find next non-empty, non-comment line
-            def get_next_code_line(start_idx):
-                for k in range(start_idx, len(lines)):
-                    s = lines[k].strip()
-                    if s and not s.startswith('#'):
-                        return k, lines[k]
-                return -1, None
-
-            # Pattern 1: Convert range(len(x)) loops
-            # Improved regex to handle spaces: range( len( data ) )
-            range_len_match = re.search(r'for\s+(\w+)\s+in\s+range\s*\(\s*len\s*\(\s*(\w+)\s*\)\s*\)', stripped)
+            # Helper: collect all lines in loop body (indent > loop_indent)
+            def get_loop_body(loop_idx, loop_indent):
+                body = []
+                for k in range(loop_idx + 1, len(lines)):
+                    bl = lines[k]
+                    if not bl.strip():
+                        body.append((k, bl))
+                        continue
+                    bl_indent = len(bl) - len(bl.lstrip())
+                    if bl_indent <= loop_indent:
+                        break
+                    body.append((k, bl))
+                return body
             
-            if range_len_match:
-                index_var = range_len_match.group(1)
-                list_var = range_len_match.group(2)
-                
-                # Look ahead for body
-                next_idx, next_val = get_next_code_line(i + 1)
-                
-                if next_idx != -1:
-                    # Check for simple append usage: res.append(data[i])
-                    append_match = re.search(rf'\.append\s*\(\s*{re.escape(list_var)}\s*\[\s*{re.escape(index_var)}\s*\]\s*\)', next_val)
-                    
-                    if append_match:
-                         # Replace loop header
-                         new_line = f"{indent_str}for item in {list_var}:"
-                         result_lines.append(new_line)
-                         
-                         # Add any skipped comment/empty lines
-                         for k in range(i + 1, next_idx):
-                             result_lines.append(lines[k])
-                             
-                         # Replace inner usage
-                         inner_line = next_val.replace(f"{list_var}[{index_var}]", "item")
-                         # Also handle spaced versions
-                         inner_line = re.sub(rf'{re.escape(list_var)}\s*\[\s*{re.escape(index_var)}\s*\]', "item", inner_line)
-                         
-                         result_lines.append(inner_line)
-                         i = next_idx + 1
-                         continue
+            # Helper: look back for an init pattern, skipping comments/empty lines
+            def look_back(pattern):
+                for k in range(i - 1, max(-1, i - 10), -1):
+                    ps = lines[k].strip()
+                    if not ps or ps.startswith('#') or ps.startswith('"""') or ps.startswith("'''"):
+                        continue
+                    m = re.match(pattern, ps)
+                    if m:
+                        return m, k
+                    return None, None  # stop at first non-matching code line
+                return None, None
             
-            # Pattern 2: Convert manual sum loops
-            # t = 0
-            if re.search(r'(\w+)\s*=\s*0\s*$', stripped):
-                sum_var_match = re.search(r'(\w+)\s*=\s*0', stripped)
-                if sum_var_match:
-                    sum_var = sum_var_match.group(1)
-                    
-                    # Look ahead for loop start
-                    loop_idx, loop_line = get_next_code_line(i + 1)
-                    
-                    if loop_idx != -1 and "for" in loop_line:
-                         # Look ahead for body
-                         body_idx, body_line = get_next_code_line(loop_idx + 1)
-                         
-                         if body_idx != -1 and f"{sum_var}" in body_line and "+=" in body_line:
-                             # Heuristic replacement
-                             loop_match = re.search(r'for\s+(\w+)\s+in\s+(\w+)', loop_line)
-                             if loop_match:
-                                 iter_var = loop_match.group(1) # x
-                                 seq_var = loop_match.group(2)  # items
-                                 
-                                 # We are replacing 3 parts: init, loop, body
-                                 # We keep comments between them
-                                 
-                                 # Check if body adds iter_var: total += x
-                                 if re.search(rf'\+=\s*{re.escape(iter_var)}', body_line) or re.search(rf'\+=\s*.*{re.escape(iter_var)}', body_line):
-                                     result_lines.append(f"{indent_str}{sum_var} = sum({seq_var})")
-                                     
-                                     # Add comments from init to body
-                                     for k in range(i + 1, body_idx):
-                                         if lines[k].strip().startswith('#') or not lines[k].strip():
-                                             result_lines.append(lines[k])
-                                             
-                                     i = body_idx + 1
-                                     continue
+            # Helper: remove last matching line from result_lines
+            def remove_from_output(pattern):
+                for r_idx in range(len(result_lines) - 1, -1, -1):
+                    if re.match(pattern, result_lines[r_idx].strip()):
+                        result_lines.pop(r_idx)
+                        return True
+                return False
 
-            # Pattern 3: String concatenation in loops
-            # s = "" ... for ... s += str(x)
-            if re.search(r'(\w+)\s*=\s*["\']\s*["\']', stripped):
-                str_var_match = re.search(r'(\w+)\s*=\s*["\']\s*["\']', stripped)
-                if str_var_match:
-                    str_var = str_var_match.group(1)
-                    
-                    loop_idx, loop_line = get_next_code_line(i + 1)
-                    if loop_idx != -1 and "for" in loop_line:
-                         body_idx, body_line = get_next_code_line(loop_idx + 1)
-                         
-                         if body_idx != -1 and f"{str_var}" in body_line and "+=" in body_line:
-                             loop_match = re.search(r'for\s+(\w+)\s+in\s+(\w+)', loop_line)
-                             if loop_match:
-                                 item_var = loop_match.group(1)
-                                 list_var = loop_match.group(2)
-                                 
-                                 result_lines.append(f"{indent_str}{str_var} = ''.join(str({item_var}) for {item_var} in {list_var})")
-                                 
-                                 # Add comments
-                                 for k in range(i + 1, body_idx):
-                                     if lines[k].strip().startswith('#') or not lines[k].strip():
-                                         result_lines.append(lines[k])
-                                         
-                                 i = body_idx + 1
-                                 continue
+            # ===== RANGE(LEN()) LOOP PATTERNS =====
+            range_match = re.search(
+                r'for\s+(\w+)\s+in\s+range\s*\(\s*len\s*\(\s*(\w+)\s*\)\s*\)', stripped)
+            
+            if range_match:
+                idx_var = range_match.group(1)
+                lst_var = range_match.group(2)
+                body = get_loop_body(i, indent)
+                code_body = [(bi, bl) for bi, bl in body
+                             if bl.strip() and not bl.strip().startswith('#')]
+                end_i = body[-1][0] + 1 if body else i + 1
+                handled = False
+                
+                # --- A: result=[]; for i in range(len(x)): result.append(EXPR) -> list comp ---
+                if not handled:
+                    m, _ = look_back(r'(\w+)\s*=\s*\[\]\s*$')
+                    if m:
+                        rvar = m.group(1)
+                        if len(code_body) == 1:
+                            fb = code_body[0][1].strip()
+                            am = re.search(
+                                rf'{re.escape(rvar)}\s*\.\s*append\s*\(\s*(.+)\s*\)', fb)
+                            if am:
+                                expr = am.group(1).strip()
+                                expr = re.sub(
+                                    rf'\b{re.escape(lst_var)}\s*\[\s*{re.escape(idx_var)}\s*\]',
+                                    'item', expr)
+                                remove_from_output(rf'{re.escape(rvar)}\s*=\s*\[\]')
+                                result_lines.append(
+                                    f"{indent_str}{rvar} = [{expr} for item in {lst_var}]")
+                                i = end_i
+                                handled = True
+                        
+                        # Conditional: if COND: result.append(EXPR) -> filtered list comp
+                        if not handled and len(code_body) == 2:
+                            fb1 = code_body[0][1].strip()
+                            fb2 = code_body[1][1].strip()
+                            cm = re.match(r'if\s+(.+)\s*:', fb1)
+                            am = re.search(
+                                rf'{re.escape(rvar)}\s*\.\s*append\s*\(\s*(.+)\s*\)', fb2)
+                            if cm and am:
+                                cond = cm.group(1).strip()
+                                expr = am.group(1).strip()
+                                repl = rf'\b{re.escape(lst_var)}\s*\[\s*{re.escape(idx_var)}\s*\]'
+                                cond = re.sub(repl, 'item', cond)
+                                expr = re.sub(repl, 'item', expr)
+                                remove_from_output(rf'{re.escape(rvar)}\s*=\s*\[\]')
+                                result_lines.append(
+                                    f"{indent_str}{rvar} = [{expr} for item in {lst_var} if {cond}]")
+                                i = end_i
+                                handled = True
+                
+                # --- B: total=0; for i in range(len(x)): total += x[i] -> sum() ---
+                if not handled:
+                    m, _ = look_back(r'(\w+)\s*=\s*0\s*$')
+                    if m and len(code_body) == 1:
+                        svar = m.group(1)
+                        fb = code_body[0][1].strip()
+                        idx_pat = rf'{re.escape(lst_var)}\s*\[\s*{re.escape(idx_var)}\s*\]'
+                        if (re.search(rf'{re.escape(svar)}\s*\+=\s*{idx_pat}', fb) or
+                            re.search(rf'{re.escape(svar)}\s*=\s*{re.escape(svar)}\s*\+\s*{idx_pat}', fb)):
+                            remove_from_output(rf'{re.escape(svar)}\s*=\s*0')
+                            result_lines.append(f"{indent_str}{svar} = sum({lst_var})")
+                            i = end_i
+                            handled = True
+                
+                # --- C: s=""; for i in range(len(x)): s += str(x[i]) -> join() ---
+                if not handled:
+                    m, _ = look_back(r'(\w+)\s*=\s*["\'][\s]*["\']')
+                    if m and len(code_body) == 1:
+                        sv = m.group(1)
+                        fb = code_body[0][1].strip()
+                        if (re.search(rf'{re.escape(sv)}\s*\+=', fb) or
+                            re.search(rf'{re.escape(sv)}\s*=\s*{re.escape(sv)}\s*\+', fb)):
+                            remove_from_output(rf'{re.escape(sv)}\s*=\s*["\']')
+                            result_lines.append(
+                                f"{indent_str}{sv} = ''.join(str(item) for item in {lst_var})")
+                            i = end_i
+                            handled = True
+                
+                # --- D: max_val=x[0]; for i in range(len(x)): if x[i]>max_val: max_val=x[i] -> max() ---
+                if not handled:
+                    m, _ = look_back(rf'(\w+)\s*=\s*{re.escape(lst_var)}\s*\[\s*0\s*\]')
+                    if m and len(code_body) == 2:
+                        mv = m.group(1)
+                        fb1 = code_body[0][1].strip()
+                        fb2 = code_body[1][1].strip()
+                        idx_pat = rf'{re.escape(lst_var)}\s*\[\s*{re.escape(idx_var)}\s*\]'
+                        if (re.search(rf'if\s+{idx_pat}\s*>\s*{re.escape(mv)}', fb1) and
+                            re.search(rf'{re.escape(mv)}\s*=\s*{idx_pat}', fb2)):
+                            remove_from_output(
+                                rf'{re.escape(mv)}\s*=\s*{re.escape(lst_var)}\s*\[\s*0\s*\]')
+                            result_lines.append(f"{indent_str}{mv} = max({lst_var})")
+                            i = end_i
+                            handled = True
+                
+                # --- E: Fallback — convert range(len()) to direct iteration ---
+                if not handled:
+                    result_lines.append(f"{indent_str}for item in {lst_var}:")
+                    for _, bl in body:
+                        new_bl = re.sub(
+                            rf'\b{re.escape(lst_var)}\s*\[\s*{re.escape(idx_var)}\s*\]',
+                            'item', bl)
+                        result_lines.append(new_bl)
+                    i = end_i
+                    handled = True
+                
+                if handled:
+                    continue
 
-            # Pattern 6: Replace pandas iterrows()
+            # ===== DIRECT FOR LOOP PATTERNS (for x in items) =====
+            direct_match = re.search(r'for\s+(\w+)\s+in\s+(\w+)\s*:', stripped)
+            if direct_match and 'range' not in stripped:
+                it_var = direct_match.group(1)
+                iterable = direct_match.group(2)
+                body = get_loop_body(i, indent)
+                code_body = [(bi, bl) for bi, bl in body
+                             if bl.strip() and not bl.strip().startswith('#')]
+                end_i = body[-1][0] + 1 if body else i + 1
+                
+                # Direct append -> list comprehension
+                m, _ = look_back(r'(\w+)\s*=\s*\[\]\s*$')
+                if m and len(code_body) == 1:
+                    rvar = m.group(1)
+                    fb = code_body[0][1].strip()
+                    am = re.search(
+                        rf'{re.escape(rvar)}\s*\.\s*append\s*\(\s*(.+)\s*\)', fb)
+                    if am:
+                        expr = am.group(1).strip()
+                        remove_from_output(rf'{re.escape(rvar)}\s*=\s*\[\]')
+                        result_lines.append(
+                            f"{indent_str}{rvar} = [{expr} for {it_var} in {iterable}]")
+                        i = end_i
+                        continue
+                
+                # Direct sum: total=0; for x in items: total += x
+                m2, _ = look_back(r'(\w+)\s*=\s*0\s*$')
+                if m2 and len(code_body) == 1:
+                    svar = m2.group(1)
+                    fb = code_body[0][1].strip()
+                    if (re.search(rf'{re.escape(svar)}\s*\+=\s*{re.escape(it_var)}', fb) or
+                        re.search(rf'{re.escape(svar)}\s*=\s*{re.escape(svar)}\s*\+\s*{re.escape(it_var)}', fb)):
+                        remove_from_output(rf'{re.escape(svar)}\s*=\s*0')
+                        result_lines.append(f"{indent_str}{svar} = sum({iterable})")
+                        i = end_i
+                        continue
+                
+                # Direct string concat: s=""; for x in items: s += str(x)
+                m3, _ = look_back(r'(\w+)\s*=\s*["\'][\s]*["\']')
+                if m3 and len(code_body) == 1:
+                    sv = m3.group(1)
+                    fb = code_body[0][1].strip()
+                    if (re.search(rf'{re.escape(sv)}\s*\+=', fb) or
+                        re.search(rf'{re.escape(sv)}\s*=\s*{re.escape(sv)}\s*\+', fb)):
+                        remove_from_output(rf'{re.escape(sv)}\s*=\s*["\']')
+                        result_lines.append(
+                            f"{indent_str}{sv} = ''.join(str({it_var}) for {it_var} in {iterable})")
+                        i = end_i
+                        continue
+
+            # ===== PANDAS ITERROWS =====
             if "iterrows()" in stripped:
                 stripped = stripped.replace("iterrows()", "# Use vectorized operations instead of iterrows()")
                 result_lines.append(indent_str + stripped)

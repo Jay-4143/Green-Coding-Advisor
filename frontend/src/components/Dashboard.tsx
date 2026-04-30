@@ -167,7 +167,7 @@ const Dashboard: React.FC = () => {
               filename: s.filename || 'snippet',
               language: s.language || 'unknown',
               greenScore: s.green_score || 0,
-              carbonSaved: (s.co2_emissions_g || 0) / 1000, // show kg
+              carbonSaved: s.co2_emissions_g || 0, // show g
               timestamp: s.created_at || new Date().toISOString(),
             }))
             setRecentSubmissions(mapped)
@@ -256,10 +256,10 @@ const Dashboard: React.FC = () => {
   }
 
   const carbonSavedData = {
-    labels: ['Carbon Saved (kg CO₂)', 'Remaining Impact'],
+    labels: ['Carbon Saved (g CO₂)', 'Remaining Impact'],
     datasets: [
       {
-        data: [stats.carbonSaved, 10 - stats.carbonSaved],
+        data: [stats.carbonSaved, 10000 - stats.carbonSaved],
         backgroundColor: [
           'rgba(34, 197, 94, 0.8)',
           'rgba(156, 163, 175, 0.3)'
@@ -339,7 +339,7 @@ const Dashboard: React.FC = () => {
         <div className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-lg p-6 text-white shadow-lg">
           <h1 className="text-3xl font-bold mb-2">Welcome to Green Coding Advisor</h1>
           <p className="text-emerald-100">
-            You've saved <span className="font-semibold">{stats.carbonSaved} kg CO₂</span> and
+            You've saved <span className="font-semibold">{stats.carbonSaved} g CO₂</span> and
             <span className="font-semibold"> {stats.energySaved} kWh</span> of energy this month!
           </p>
         </div>
@@ -389,7 +389,7 @@ const Dashboard: React.FC = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Carbon Saved</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.carbonSaved} kg</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.carbonSaved} g</p>
               </div>
             </div>
           </div>
@@ -548,7 +548,7 @@ const Dashboard: React.FC = () => {
                         {submission.greenScore}
                       </span>
                       <span className="text-sm text-gray-500 dark:text-gray-400">
-                        {submission.carbonSaved} kg CO₂
+                        {submission.carbonSaved} g CO₂
                       </span>
                     </div>
                     <p className="text-xs text-gray-400 dark:text-gray-500">
@@ -572,14 +572,14 @@ const Dashboard: React.FC = () => {
             onClick={() => navigate('/submit')}
             whileHover={{ scale: 1.05, y: -2 }}
             whileTap={{ scale: 0.98 }}
-            className="flex items-center justify-center p-4 bg-green-50 hover:bg-green-100 rounded-lg border-2 border-dashed border-green-300 transition-colors"
+            className="flex items-center justify-center p-4 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-lg border-2 border-dashed border-green-300 dark:border-green-800 transition-colors"
           >
             <div className="text-center">
-              <svg className="w-8 h-8 text-green-600 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-8 h-8 text-green-600 dark:text-green-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
               </svg>
-              <p className="font-medium text-green-800">Submit Code</p>
-              <p className="text-sm text-green-600">Analyze new code</p>
+              <p className="font-medium text-green-800 dark:text-green-200">Submit Code</p>
+              <p className="text-sm text-green-600 dark:text-green-400">Analyze new code</p>
             </div>
           </motion.button>
 
@@ -601,14 +601,14 @@ const Dashboard: React.FC = () => {
                 alert('Failed to download report')
               }
             }}
-            className="flex items-center justify-center p-4 bg-blue-50 hover:bg-blue-100 rounded-lg border-2 border-dashed border-blue-300 transition-colors cursor-pointer"
+            className="flex items-center justify-center p-4 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg border-2 border-dashed border-blue-300 dark:border-blue-800 transition-colors cursor-pointer"
           >
             <div className="text-center">
-              <svg className="w-8 h-8 text-blue-600 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-8 h-8 text-blue-600 dark:text-blue-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
-              <p className="font-medium text-blue-800">Download Reports</p>
-              <p className="text-sm text-blue-600">CSV & PDF</p>
+              <p className="font-medium text-blue-800 dark:text-blue-200">Download Reports</p>
+              <p className="text-sm text-blue-600 dark:text-blue-400">CSV & PDF</p>
             </div>
           </motion.button>
 
@@ -616,14 +616,14 @@ const Dashboard: React.FC = () => {
             onClick={() => navigate('/chatbot')}
             whileHover={{ scale: 1.05, y: -2 }}
             whileTap={{ scale: 0.98 }}
-            className="flex items-center justify-center p-4 bg-purple-50 hover:bg-purple-100 rounded-lg border-2 border-dashed border-purple-300 transition-colors"
+            className="flex items-center justify-center p-4 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-lg border-2 border-dashed border-purple-300 dark:border-purple-800 transition-colors"
           >
             <div className="text-center">
-              <svg className="w-8 h-8 text-purple-600 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-8 h-8 text-purple-600 dark:text-purple-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
-              <p className="font-medium text-purple-800">AI Advisor</p>
-              <p className="text-sm text-purple-600">Get optimization tips</p>
+              <p className="font-medium text-purple-800 dark:text-purple-200">AI Advisor</p>
+              <p className="text-sm text-purple-600 dark:text-purple-400">Get optimization tips</p>
             </div>
           </motion.button>
         </div>
