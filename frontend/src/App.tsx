@@ -370,18 +370,18 @@ function Layout({ children }: { children: React.ReactNode }) {
                 </Link>
                 {showUserMenu && (
                   <div className="absolute right-0 top-12 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50">
-                    <Link to="/dashboard" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">Dashboard</Link>
-                    <Link to="/submit" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">Submit Code</Link>
-                    <Link to="/analysis" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">Analysis</Link>
-                    <Link to="/leaderboard" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">Leaderboard</Link>
-                    <Link to="/badges" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">Badges</Link>
-                    <Link to="/teams" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">Teams</Link>
-                    <Link to="/chatbot" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">Chatbot</Link>
-                    <Link to="/settings" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">Settings</Link>
+                    <Link to="/dashboard" onClick={() => setShowUserMenu(false)} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">Dashboard</Link>
+                    <Link to="/submit" onClick={() => setShowUserMenu(false)} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">Submit Code</Link>
+                    <Link to="/analysis" onClick={() => setShowUserMenu(false)} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">Analysis</Link>
+                    <Link to="/leaderboard" onClick={() => setShowUserMenu(false)} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">Leaderboard</Link>
+                    <Link to="/badges" onClick={() => setShowUserMenu(false)} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">Badges</Link>
+                    <Link to="/teams" onClick={() => setShowUserMenu(false)} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">Teams</Link>
+                    <Link to="/chatbot" onClick={() => setShowUserMenu(false)} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">Chatbot</Link>
+                    <Link to="/settings" onClick={() => setShowUserMenu(false)} className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">Settings</Link>
                     {userRole === 'admin' && (
                       <>
                         <hr className="my-1 border-gray-200 dark:border-gray-700" />
-                        <Link to="/admin" className="block px-4 py-2 text-sm text-emerald-600 dark:text-emerald-400 font-semibold hover:bg-emerald-50 dark:hover:bg-emerald-900/20">Admin Dashboard</Link>
+                        <Link to="/admin" onClick={() => setShowUserMenu(false)} className="block px-4 py-2 text-sm text-emerald-600 dark:text-emerald-400 font-semibold hover:bg-emerald-50 dark:hover:bg-emerald-900/20">Admin Dashboard</Link>
                       </>
                     )}
                   </div>
@@ -590,7 +590,7 @@ function Analysis() {
           </div>
           <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3 border border-purple-100 dark:border-purple-800/50">
             <p className="text-sm text-purple-600 dark:text-purple-400">Memory</p>
-            <p className="text-lg font-semibold text-purple-900 dark:text-purple-100">{Number(data.memoryUsage).toFixed(1)} MB</p>
+            <p className="text-lg font-semibold text-purple-900 dark:text-purple-100">{Number(data.memoryUsage).toFixed(1)} KB</p>
           </div>
           <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-3 border border-orange-100 dark:border-orange-800/50">
             <p className="text-sm text-orange-600 dark:text-orange-400">CPU Time</p>

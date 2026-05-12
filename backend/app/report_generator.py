@@ -123,7 +123,7 @@ class ReportGenerator:
             ['CPU Time', f"{submission_data.get('cpu_time_ms', 0):.2f} ms", 
              'Fast' if submission_data.get('cpu_time_ms', 0) < 1 else 
              'Moderate' if submission_data.get('cpu_time_ms', 0) < 5 else 'Slow'],
-            ['Memory Usage', f"{submission_data.get('memory_usage_mb', 0):.2f} MB", 
+            ['Memory Usage', f"{submission_data.get('memory_usage_mb', 0):.2f} KB", 
              'Low' if submission_data.get('memory_usage_mb', 0) < 5 else 
              'Medium' if submission_data.get('memory_usage_mb', 0) < 20 else 'High'],
             ['Complexity Score', f"{submission_data.get('complexity_score', 0):.2f}", 
@@ -537,7 +537,7 @@ class ReportGenerator:
             ['Energy Consumption', f"{submission_data.get('energy_consumption_wh', 0):.4f} Wh"],
             ['CO₂ Emissions', f"{submission_data.get('co2_emissions_g', 0):.4f} g"],
             ['CPU Time', f"{submission_data.get('cpu_time_ms', 0):.2f} ms"],
-            ['Memory Usage', f"{submission_data.get('memory_usage_mb', 0):.2f} MB"],
+            ['Memory Usage', f"{submission_data.get('memory_usage_mb', 0):.2f} KB"],
             ['Complexity Score', f"{submission_data.get('complexity_score', 0):.2f}"]
         ]
         metrics_table = Table(metrics_data, colWidths=[2.5*inch, 3.5*inch])
@@ -720,7 +720,7 @@ class ReportGenerator:
             <tr><td>Energy Consumption</td><td>{submission_data.get('energy_consumption_wh', 0):.4f} Wh</td><td>{'Low' if submission_data.get('energy_consumption_wh', 0) < 0.01 else 'Medium' if submission_data.get('energy_consumption_wh', 0) < 0.1 else 'High'}</td></tr>
             <tr><td>CO₂ Emissions</td><td>{submission_data.get('co2_emissions_g', 0):.4f} g</td><td>{'Low' if submission_data.get('co2_emissions_g', 0) < 5 else 'Medium' if submission_data.get('co2_emissions_g', 0) < 20 else 'High'}</td></tr>
             <tr><td>CPU Time</td><td>{submission_data.get('cpu_time_ms', 0):.2f} ms</td><td>{'Fast' if submission_data.get('cpu_time_ms', 0) < 1 else 'Moderate' if submission_data.get('cpu_time_ms', 0) < 5 else 'Slow'}</td></tr>
-            <tr><td>Memory Usage</td><td>{submission_data.get('memory_usage_mb', 0):.2f} MB</td><td>{'Low' if submission_data.get('memory_usage_mb', 0) < 5 else 'Medium' if submission_data.get('memory_usage_mb', 0) < 20 else 'High'}</td></tr>
+            <tr><td>Memory Usage</td><td>{submission_data.get('memory_usage_mb', 0):.2f} KB</td><td>{'Low' if submission_data.get('memory_usage_mb', 0) < 5 else 'Medium' if submission_data.get('memory_usage_mb', 0) < 20 else 'High'}</td></tr>
             <tr><td>Complexity Score</td><td>{submission_data.get('complexity_score', 0):.2f}</td><td>{'Simple' if submission_data.get('complexity_score', 0) < 3 else 'Moderate' if submission_data.get('complexity_score', 0) < 7 else 'Complex'}</td></tr>
         </table>
         

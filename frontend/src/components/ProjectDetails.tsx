@@ -108,7 +108,7 @@ const ProjectDetails: React.FC = () => {
                             <div className="ml-4">
                                 <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Avg Green Score</p>
                                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                                    {projectData.metrics.average_green_score.toFixed(1)}
+                                    {(projectData.metrics.average_green_score || 0).toFixed(1)}
                                 </p>
                             </div>
                         </div>
@@ -142,7 +142,7 @@ const ProjectDetails: React.FC = () => {
                             <div className="ml-4">
                                 <p className="text-sm font-medium text-gray-600 dark:text-gray-300">CO₂ Saved</p>
                                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                                    {(projectData.metrics.total_co2_saved / 1000).toFixed(3)} kg
+                                    {((projectData.metrics.total_co2_saved || 0) / 1000).toFixed(3)} kg
                                 </p>
                             </div>
                         </div>
@@ -177,7 +177,7 @@ const ProjectDetails: React.FC = () => {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                                            {sub.co2_emissions_g.toFixed(4)}
+                                            {(sub.co2_emissions_g || 0).toFixed(4)}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                             {new Date(sub.created_at).toLocaleDateString()}

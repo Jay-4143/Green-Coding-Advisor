@@ -650,11 +650,12 @@ class GreenCodingPredictor:
         return max(0.1, complexity * 0.5)
     
     def _predict_memory(self, features: List[float]) -> float:
-        """Predict memory usage in MB"""
-        # Simple heuristic based on code size and imports
+        """Predict memory usage in KB (stored in memory_usage_mb field for compatibility)"""
+        # Heuristic based on code size and imports — returns KB
         code_size = features[0]
         imports = features[14] + features[15]
-        return max(1.0, (code_size / 1000) + (imports * 2))
+        # Code files submitted are typically 0.5–50 KB, so use raw byte size
+        return max(0.5, (code_size / 1024) + (imports * 0.2))
     
     def _calculate_complexity(self, code: str, language: str) -> float:
         """Calculate code complexity (multi-language support)"""
@@ -1217,9 +1218,9 @@ class GreenCodingPredictor:
                     "improvement": f"{improvements['cpu_time_reduction']:.2f} ms"
                 },
                 "memory_usage": {
-                    "original": f"{original_metrics['memory_usage_mb']:.2f} MB",
-                    "optimized": f"{optimized_metrics['memory_usage_mb']:.2f} MB",
-                    "improvement": f"{improvements['memory_reduction']:.2f} MB"
+                    "original": f"{original_metrics['memory_usage_mb']:.2f} KB",
+                    "optimized": f"{optimized_metrics['memory_usage_mb']:.2f} KB",
+                    "improvement": f"{improvements['memory_reduction']:.2f} KB"
                 },
                 "time_complexity": {
                     "original": original_metrics["time_complexity"],
@@ -2259,9 +2260,9 @@ class GreenCodingPredictor:
                 "improvement": f"{(orig_metrics['cpu_time_ms'] - opt_metrics['cpu_time_ms']):.2f} ms"
             },
             "memory_usage": {
-                "original": f"{orig_metrics['memory_usage_mb']:.2f} MB",
-                "optimized": f"{opt_metrics['memory_usage_mb']:.2f} MB",
-                "improvement": f"{(orig_metrics['memory_usage_mb'] - opt_metrics['memory_usage_mb']):.2f} MB"
+                "original": f"{orig_metrics['memory_usage_mb']:.2f} KB",
+                "optimized": f"{opt_metrics['memory_usage_mb']:.2f} KB",
+                "improvement": f"{(orig_metrics['memory_usage_mb'] - opt_metrics['memory_usage_mb']):.2f} KB"
             }
         }
             

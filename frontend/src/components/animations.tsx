@@ -12,7 +12,7 @@ const fadeInUp: Variants = {
     opacity: 1,
     y: 0,
     transition: {
-      duration: 0.6,
+      duration: 0.15,
       ease: [0.25, 0.46, 0.45, 0.94], // Custom easing for smooth animation
     },
   },
@@ -25,7 +25,7 @@ const fadeIn: Variants = {
   visible: {
     opacity: 1,
     transition: {
-      duration: 0.6,
+      duration: 0.15,
       ease: [0.25, 0.46, 0.45, 0.94],
     },
   },
@@ -40,7 +40,7 @@ const scaleIn: Variants = {
     opacity: 1,
     scale: 1,
     transition: {
-      duration: 0.5,
+      duration: 0.15,
       ease: [0.25, 0.46, 0.45, 0.94],
     },
   },
@@ -58,7 +58,7 @@ export const FadeInUp: React.FC<FadeInUpProps> = ({
   children,
   className = '',
   delay = 0,
-  duration = 0.6,
+  duration = 0.15,
 }) => {
   const ref = useRef(null)
   const isInView = useInView(ref, { once: true, margin: '-100px' })
@@ -107,7 +107,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           opacity: 1,
           y: 0,
           transition: {
-            duration: 0.8,
+            duration: 0.15,
             ease: [0.25, 0.46, 0.45, 0.94],
           },
         },
@@ -158,7 +158,7 @@ interface StaggerContainerProps {
 export const StaggerContainer: React.FC<StaggerContainerProps> = ({
   children,
   className = '',
-  staggerDelay = 0.1,
+  staggerDelay = 0.02,
 }) => {
   const ref = useRef(null)
   const isInView = useInView(ref, { once: true, margin: '-100px' })
@@ -237,7 +237,7 @@ export const AnimatedCard: React.FC<AnimatedCardProps> = ({
           y: 0,
           scale: 1,
           transition: {
-            duration: 0.5,
+            duration: 0.15,
             delay,
             ease: [0.25, 0.46, 0.45, 0.94],
           },
@@ -326,7 +326,7 @@ export const FadeIn: React.FC<FadeInProps> = ({
         visible: {
           opacity: 1,
           transition: {
-            duration: 0.6,
+            duration: 0.15,
             delay,
             ease: [0.25, 0.46, 0.45, 0.94],
           },

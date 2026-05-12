@@ -1,12 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
 import apiClient from '../api/client'
-import {
-  FadeInUp,
-  AnimatedHeading,
-  StaggerContainer,
-  StaggerItem,
-} from './animations'
 
 interface LeaderboardEntry {
   rank: number
@@ -28,7 +21,7 @@ interface MyPerformance {
 const Leaderboard: React.FC = () => {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [loading, setLoading] = useState(true)
-  const [timeframe, setTimeframe] = useState<'week' | 'month' | 'all'>('month')
+  const [timeframe, setTimeframe] = useState<'week' | 'month' | 'all'>('all')
   const [me, setMe] = useState<{ id: number | null; username: string | null }>({ id: null, username: null })
   const [myPerf, setMyPerf] = useState<MyPerformance>({ rank: null, greenScore: 0, carbonSaved: 0, submissions: 0 })
 
@@ -38,7 +31,7 @@ const Leaderboard: React.FC = () => {
         setLoading(true)
         const [meRes, lbRes] = await Promise.all([
           apiClient.get('/auth/me').catch(() => ({ data: {} })),
-          apiClient.get('/metrics/leaderboard', { params: { timeframe } }),
+          apiClient.get('/metrics/leaderboard', { params: { timeframe, limit: 50 } }),
         ])
         const entries: LeaderboardEntry[] = lbRes.data?.entries || []
         setLeaderboard(entries)
@@ -51,7 +44,7 @@ const Leaderboard: React.FC = () => {
           try {
             const summaryRes = await apiClient.get(`/metrics/summary?user_id=${uid}`)
             const summary = summaryRes.data || {}
-            const myEntry = entries.find((e) => e.username === username || e.rank === 1 && uid === uid) // best-effort match by username
+            const myEntry = entries.find((e) => e.username === username)
             setMyPerf({
               rank: myEntry?.rank ?? null,
               greenScore: summary.average_green_score || 0,
@@ -73,46 +66,30 @@ const Leaderboard: React.FC = () => {
     fetchLeaderboard()
   }, [timeframe])
 
-  const getRankIcon = (rank: number) => {
-    switch (rank) {
-      case 1:
-        return (
-          <div className="flex items-center justify-center w-8 h-8 bg-yellow-100 rounded-full">
-            <svg className="w-5 h-5 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-            </svg>
-          </div>
-        )
-      case 2:
-        return (
-          <div className="flex items-center justify-center w-8 h-8 bg-gray-100 dark:bg-slate-700 rounded-full">
-            <svg className="w-5 h-5 text-gray-600 dark:text-gray-300" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-            </svg>
-          </div>
-        )
-      case 3:
-        return (
-          <div className="flex items-center justify-center w-8 h-8 bg-orange-100 rounded-full">
-            <svg className="w-5 h-5 text-orange-600" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-            </svg>
-          </div>
-        )
-      default:
-        return (
-          <div className="flex items-center justify-center w-8 h-8 bg-gray-100 dark:bg-slate-700 rounded-full">
-            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{rank}</span>
-          </div>
-        )
-    }
+  // Get initials for avatar
+  const getInitials = (name: string) => {
+    const parts = name.trim().split(' ')
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
+    return name.slice(0, 2).toUpperCase()
   }
 
-  const getScoreColor = (score: number) => {
-    if (score >= 90) return 'text-green-600 bg-green-100'
-    if (score >= 80) return 'text-blue-600 bg-blue-100'
-    if (score >= 70) return 'text-yellow-600 bg-yellow-100'
-    return 'text-red-600 bg-red-100'
+  const top3 = leaderboard.slice(0, 3)
+  const rest = leaderboard.slice(3)
+  // Podium order: 2nd, 1st, 3rd
+  const podiumOrder = top3.length >= 3 ? [
+    { ...top3[1], podiumRank: 2 },
+    { ...top3[0], podiumRank: 1 },
+    { ...top3[2], podiumRank: 3 },
+  ] : top3.map(e => ({ ...e, podiumRank: e.rank }))
+
+  // Medal config
+  const getMedalInfo = (rank: number) => {
+    switch(rank) {
+      case 1: return { medal: '🥇', bg: 'from-yellow-100 to-amber-100 dark:from-yellow-900/30 dark:to-amber-900/30', border: 'border-yellow-400', avatarRing: 'ring-yellow-400', height: 'min-h-[260px]' }
+      case 2: return { medal: '🥈', bg: 'from-gray-100 to-slate-100 dark:from-gray-800/50 dark:to-slate-800/50', border: 'border-slate-400', avatarRing: 'ring-slate-400', height: 'min-h-[220px]' }
+      case 3: return { medal: '🥉', bg: 'from-orange-100 to-amber-100 dark:from-orange-900/20 dark:to-amber-900/20', border: 'border-orange-400', avatarRing: 'ring-orange-400', height: 'min-h-[200px]' }
+      default: return { medal: '', bg: 'from-gray-100 to-gray-100 dark:from-gray-800 dark:to-gray-800', border: 'border-gray-300', avatarRing: 'ring-gray-400', height: 'min-h-[200px]' }
+    }
   }
 
   if (loading) {
@@ -126,14 +103,12 @@ const Leaderboard: React.FC = () => {
   return (
     <div className="space-y-6 bg-slate-50 dark:bg-slate-900 min-h-screen p-4 sm:p-6">
       {/* Header */}
-      <FadeInUp>
-        <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg p-6 text-white">
-          <h1 className="text-3xl font-bold mb-2">Green Coding Leaderboard</h1>
-          <p className="text-green-100">
-            Compete with developers worldwide to create the most sustainable code
-          </p>
-        </div>
-      </FadeInUp>
+      <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg p-6 text-white">
+        <h1 className="text-3xl font-bold mb-2">Green Coding Leaderboard</h1>
+        <p className="text-green-100">
+          Compete with developers worldwide to create the most sustainable code
+        </p>
+      </div>
 
       {/* Timeframe Selector */}
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-4">
@@ -168,55 +143,110 @@ const Leaderboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Leaderboard */}
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-slate-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Top Performers</h2>
-        </div>
+      {/* Podium — Top 3 */}
+      {top3.length >= 3 && (
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6 text-center">🏆 Top Performers</h2>
+          <div className="flex items-end justify-center gap-3 sm:gap-5 max-w-3xl mx-auto pb-2">
+            {podiumOrder.map((entry) => {
+              const info = getMedalInfo(entry.podiumRank)
+              return (
+                <div
+                  key={entry.podiumRank}
+                  className={`flex-1 max-w-[200px] ${info.height} bg-gradient-to-b ${info.bg} border ${info.border} rounded-xl flex flex-col items-center justify-start pt-8 pb-4 px-3 relative transition-transform hover:scale-[1.02]`}
+                >
+                  {/* Medal badge */}
+                  <div className="absolute -top-5 left-1/2 -translate-x-1/2 w-10 h-10 rounded-full bg-white dark:bg-slate-700 flex items-center justify-center text-xl shadow-lg border-2 border-white dark:border-slate-600">
+                    {info.medal}
+                  </div>
 
-        <StaggerContainer className="divide-y divide-gray-200 dark:divide-slate-700" staggerDelay={0.05}>
-          {leaderboard.map((entry) => (
-            <StaggerItem key={entry.rank}>
-              <motion.div
+                  {/* Avatar */}
+                  <div className={`w-14 h-14 rounded-full bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center text-white font-bold text-lg ring-3 ${info.avatarRing} shrink-0`}>
+                    {getInitials(entry.username)}
+                  </div>
+
+                  {/* Username - clearly visible */}
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white mt-3 text-center leading-snug w-full" title={entry.username}>
+                    {entry.username}
+                  </p>
+
+                  {/* Score */}
+                  <div className={`mt-2 px-3 py-1 rounded-full text-xs font-bold ${
+                    entry.greenScore >= 80 ? 'text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/40' :
+                    entry.greenScore >= 70 ? 'text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/40' :
+                    'text-yellow-700 dark:text-yellow-300 bg-yellow-100 dark:bg-yellow-900/40'
+                  }`}>
+                    {entry.greenScore}/100
+                  </div>
+
+                  {/* Badges count */}
+                  {entry.badges.length > 0 && (
+                    <div className="mt-1.5 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                      <span>🏅</span>
+                      <span>{entry.badges.length} badge{entry.badges.length > 1 ? 's' : ''}</span>
+                    </div>
+                  )}
+
+                  {/* Stats */}
+                  <div className="mt-1 text-[11px] text-gray-500 dark:text-gray-400 text-center">
+                    {entry.submissions} submissions
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Remaining Rankings (4+) */}
+      {rest.length > 0 && (
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-slate-700">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Rankings</h2>
+          </div>
+
+          <div className="divide-y divide-gray-200 dark:divide-slate-700">
+            {rest.map((entry) => (
+              <div
+                key={entry.rank}
                 className="px-6 py-4 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
-                whileHover={{ x: 5 }}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
-                    {getRankIcon(entry.rank)}
+                    {/* Rank number */}
+                    <div className="flex items-center justify-center w-8 h-8 bg-gray-100 dark:bg-slate-700 rounded-full">
+                      <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{entry.rank}</span>
+                    </div>
+
+                    {/* Avatar */}
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center text-white font-bold text-sm">
+                      {getInitials(entry.username)}
+                    </div>
 
                     <div className="flex-1">
                       <div className="flex items-center space-x-3">
-                        <h3 className="text-lg font-medium text-gray-900 dark:text-white">{entry.username}</h3>
+                        <h3 className="text-base font-medium text-gray-900 dark:text-white">{entry.username}</h3>
                         {entry.badges.length > 0 && (
-                          <div className="flex space-x-1">
-                            {entry.badges.map((badge, index) => (
-                              <span
-                                key={index}
-                                className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300"
-                              >
-                                {badge}
-                              </span>
-                            ))}
-                          </div>
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300" title={entry.badges.join(', ')}>
+                            🏅 {entry.badges.length}
+                          </span>
                         )}
                       </div>
-
                       <div className="flex items-center space-x-4 mt-1">
                         <span className="text-sm text-gray-500 dark:text-gray-400">
                           {entry.submissions} submissions
                         </span>
                         <span className="text-sm text-gray-500 dark:text-gray-400">
-                          {entry.carbonSaved} kg CO₂ saved
+                          {entry.carbonSaved.toFixed(3)} g CO₂ saved
                         </span>
                       </div>
                     </div>
                   </div>
 
                   <div className="text-right">
-                    <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${entry.greenScore >= 90 ? 'text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30' :
-                      entry.greenScore >= 80 ? 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30' :
-                        entry.greenScore >= 70 ? 'text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/30' :
+                    <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${entry.greenScore >= 80 ? 'text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30' :
+                      entry.greenScore >= 70 ? 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30' :
+                        entry.greenScore >= 60 ? 'text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/30' :
                           'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30'
                       }`}>
                       {entry.greenScore}/100
@@ -224,38 +254,72 @@ const Leaderboard: React.FC = () => {
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Green Score</p>
                   </div>
                 </div>
-              </motion.div>
-            </StaggerItem>
-          ))}
-        </StaggerContainer>
-      </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Show all entries in table if less than 3 total */}
+      {top3.length < 3 && leaderboard.length > 0 && (
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-slate-700">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Rankings</h2>
+          </div>
+          <div className="divide-y divide-gray-200 dark:divide-slate-700">
+            {leaderboard.map((entry) => (
+              <div
+                key={entry.rank}
+                className="px-6 py-4 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center justify-center w-8 h-8 bg-gray-100 dark:bg-slate-700 rounded-full">
+                      <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{entry.rank}</span>
+                    </div>
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center text-white font-bold text-sm">
+                      {getInitials(entry.username)}
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-base font-medium text-gray-900 dark:text-white">{entry.username}</h3>
+                      <span className="text-sm text-gray-500 dark:text-gray-400">{entry.submissions} submissions</span>
+                    </div>
+                  </div>
+                  <div className={`px-3 py-1 rounded-full text-sm font-medium ${entry.greenScore >= 80 ? 'text-green-600 bg-green-100 dark:text-green-400 dark:bg-green-900/30' : 'text-yellow-600 bg-yellow-100 dark:text-yellow-400 dark:bg-yellow-900/30'}`}>
+                    {entry.greenScore}/100
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {leaderboard.length === 0 && (
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-12 text-center">
+          <p className="text-gray-500 dark:text-gray-400 text-lg">No leaderboard data available for this timeframe.</p>
+          <p className="text-gray-400 dark:text-gray-500 text-sm mt-2">Submit code for analysis to appear on the leaderboard!</p>
+        </div>
+      )}
 
       {/* Your Position */}
-      <FadeInUp delay={0.2}>
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Your Performance</h3>
-          <StaggerContainer className="grid grid-cols-1 md:grid-cols-3 gap-4" staggerDelay={0.1}>
-            <StaggerItem>
-              <div className="text-center p-4 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-800">
-                <p className="text-2xl font-bold text-green-600 dark:text-green-400">{myPerf.rank ? `#${myPerf.rank}` : '—'}</p>
-                <p className="text-sm text-green-600 dark:text-green-400">Current Rank</p>
-              </div>
-            </StaggerItem>
-            <StaggerItem>
-              <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800">
-                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{myPerf.greenScore.toFixed(1)}</p>
-                <p className="text-sm text-blue-600 dark:text-blue-400">Avg Green Score</p>
-              </div>
-            </StaggerItem>
-            <StaggerItem>
-              <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/30 rounded-lg border border-purple-200 dark:border-purple-800">
-                <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{(myPerf.carbonSaved / 1000).toFixed(2)}</p>
-                <p className="text-sm text-purple-600 dark:text-purple-400">kg CO₂ Saved</p>
-              </div>
-            </StaggerItem>
-          </StaggerContainer>
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Your Performance</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="text-center p-4 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-800">
+            <p className="text-2xl font-bold text-green-600 dark:text-green-400">{myPerf.rank ? `#${myPerf.rank}` : '—'}</p>
+            <p className="text-sm text-green-600 dark:text-green-400">Current Rank</p>
+          </div>
+          <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800">
+            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{myPerf.greenScore.toFixed(1)}</p>
+            <p className="text-sm text-blue-600 dark:text-blue-400">Avg Green Score</p>
+          </div>
+          <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/30 rounded-lg border border-purple-200 dark:border-purple-800">
+            <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{(myPerf.carbonSaved / 1000).toFixed(2)}</p>
+            <p className="text-sm text-purple-600 dark:text-purple-400">kg CO₂ Saved</p>
+          </div>
         </div>
-      </FadeInUp>
+      </div>
 
       {/* Achievement Progress */}
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6">
@@ -279,18 +343,14 @@ const Leaderboard: React.FC = () => {
           <div>
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Eco-Friendly Champion</span>
-              {/* Assuming myPerf could have submissions count, otherwise defaulting or using a placeholder derived from score/carbon. 
-                  Since we didn't add submissions to MyPerformance interface in the previous step, we'll try to use a safe fallback or update state.
-                  But I'll update the state interface first.
-              */}
               <span className="text-sm text-gray-500 dark:text-gray-400">
-                {(myPerf as any).submissions || 0} / 50 submissions
+                {myPerf.submissions} / 50 submissions
               </span>
             </div>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
               <div
                 className="bg-blue-500 h-2 rounded-full"
-                style={{ width: `${Math.min((((myPerf as any).submissions || 0) / 50) * 100, 100)}%` }}
+                style={{ width: `${Math.min((myPerf.submissions / 50) * 100, 100)}%` }}
               ></div>
             </div>
           </div>

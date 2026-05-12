@@ -449,3 +449,60 @@ async def get_team_leaderboard(
         stat["rank"] = idx
     
     return {"entries": member_stats}
+
+
+@router.get("/{team_id}/activity")
+async def get_team_activity(
+    team_id: int,
+    limit: int = 10,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncIOMotorDatabase = Depends(get_mongo_db)
+):
+    """Get recent activity (submissions) from all team members"""
+    team = await db["teams"].find_one({"id": team_id})
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+    
+    # Check membership
+    membership = await db["team_members"].find_one({
+        "team_id": team_id,
+        "user_id": current_user.id
+    })
+    if not membership and current_user.role.value != "admin":
+        raise HTTPException(status_code=403, detail="Not a team member")
+    
+    # Get all team member IDs
+    members_cursor = db["team_members"].find({"team_id": team_id})
+    members = await members_cursor.to_list(length=None)
+    member_ids = [m["user_id"] for m in members]
+    
+    if not member_ids:
+        return {"activities": []}
+    
+    # Get recent submissions from team members
+    submissions_cursor = db["submissions"].find(
+        {"user_id": {"$in": member_ids}, "status": "completed"}
+    ).sort("created_at", -1).limit(limit)
+    submissions = await submissions_cursor.to_list(length=None)
+    
+    # Build user lookup
+    user_map = {}
+    for uid in set(s.get("user_id") for s in submissions):
+        user = await db["users"].find_one({"id": uid})
+        if user:
+            user_map[uid] = user.get("username", "Unknown")
+    
+    activities = []
+    for s in submissions:
+        activities.append({
+            "id": s.get("id"),
+            "user_id": s.get("user_id"),
+            "username": user_map.get(s.get("user_id"), "Unknown"),
+            "filename": s.get("filename", "code.txt"),
+            "language": s.get("language", "unknown"),
+            "green_score": s.get("green_score"),
+            "created_at": s.get("created_at").isoformat() if s.get("created_at") else None
+        })
+    
+    return {"activities": activities}
+

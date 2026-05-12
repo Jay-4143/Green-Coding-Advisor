@@ -28,9 +28,32 @@ def main():
         sys.exit(1)
         
     import uvicorn
+    import subprocess
     try:
         print("Starting Green Coding Advisor Backend Server...")
         print("=" * 60)
+        
+        # Attempt to start Ollama for the chatbot
+        try:
+            if sys.platform == "win32":
+                subprocess.Popen(
+                    ["ollama", "serve"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    creationflags=subprocess.CREATE_NO_WINDOW
+                )
+            else:
+                subprocess.Popen(
+                    ["ollama", "serve"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL
+                )
+            print("✅ Ollama server started (chatbot AI available)")
+        except FileNotFoundError:
+            print("ℹ️  Ollama not installed — chatbot will use built-in knowledge base")
+        except Exception:
+            print("ℹ️  Ollama already running or unavailable — chatbot will fallback gracefully")
+        
         print("Server will be available at: http://localhost:8000")
         print("API Documentation: http://localhost:8000/docs")
         print("=" * 60)

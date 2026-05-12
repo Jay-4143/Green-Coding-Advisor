@@ -275,7 +275,24 @@ const CodeSubmission: React.FC = () => {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<SubmissionResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [projectId, setProjectId] = useState<string>('')
+  const [projects, setProjects] = useState<any[]>([])
   const navigate = useNavigate()
+
+  React.useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const token = localStorage.getItem('access_token')
+        if (token) {
+          const res = await apiClient.get('/projects')
+          setProjects(res.data || [])
+        }
+      } catch (err) {
+        console.error('Error fetching projects:', err)
+      }
+    }
+    fetchProjects()
+  }, [])
 
   const languages = [
     { value: 'python', label: 'Python' },
@@ -324,8 +341,9 @@ const CodeSubmission: React.FC = () => {
       // Create submission so it is persisted for dashboard/metrics
       const createRes = await apiClient.post('/submissions', {
         code_content: code.trim(),
-        language: optimizeData.detected_language || language,
-        filename: filename || `code.${(optimizeData.detected_language || language) === 'javascript' ? 'js' : (optimizeData.detected_language || language)}`,
+        language: optimizeData?.detected_language || language,
+        filename: filename || `code.${(optimizeData?.detected_language || language) === 'javascript' ? 'js' : (optimizeData?.detected_language || language)}`,
+        ...(projectId ? { project_id: parseInt(projectId) } : {})
       })
       const submissionId = createRes.data?.id
       if (!submissionId) {
@@ -342,7 +360,7 @@ const CodeSubmission: React.FC = () => {
         energy_consumption_wh: parseFloat(optimizeData.comparison_table.energy_usage?.optimized?.replace(' Wh', '') || String(analyzeData.energy_consumption_wh)),
         co2_emissions_g: parseFloat(optimizeData.comparison_table.co2_emissions?.optimized?.replace(' g', '') || String(analyzeData.co2_emissions_g)),
         cpu_time_ms: parseFloat(optimizeData.comparison_table.cpu_time?.optimized?.replace(' ms', '') || String(analyzeData.cpu_time_ms)),
-        memory_usage_mb: parseFloat(optimizeData.comparison_table.memory_usage?.optimized?.replace(' MB', '') || String(analyzeData.memory_usage_mb)),
+        memory_usage_mb: parseFloat(optimizeData.comparison_table.memory_usage?.optimized?.replace(' KB', '') || String(analyzeData.memory_usage_mb)),
       } : analyzeData
 
       const normalized: SubmissionResult = {
@@ -489,6 +507,24 @@ const CodeSubmission: React.FC = () => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Project (optional)
+            </label>
+            <select
+              value={projectId}
+              onChange={(e) => setProjectId(e.target.value)}
+              className="w-full md:w-1/2 border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+              <option value="">-- No Project --</option>
+              {projects.map((proj) => (
+                <option key={proj.id} value={proj.id}>
+                  {proj.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Code
             </label>
             <textarea
@@ -618,7 +654,7 @@ const CodeSubmission: React.FC = () => {
                 </svg>
                 <div className="ml-3">
                   <p className="text-sm font-medium text-purple-600 dark:text-purple-400">Memory</p>
-                  <p className="text-lg font-bold text-purple-900 dark:text-purple-200">{result.memoryUsage.toFixed(1)} MB</p>
+                  <p className="text-lg font-bold text-purple-900 dark:text-purple-200">{result.memoryUsage.toFixed(1)} KB</p>
                 </div>
               </div>
             </div>

@@ -276,7 +276,8 @@ async def get_project_summary(
                 "id": s["id"],
                 "filename": s.get("filename"),
                 "language": s.get("language"),
-                "green_score": s.get("green_score"),
+                "green_score": s.get("green_score", 0),
+                "co2_emissions_g": s.get("co2_emissions_g", 0),
                 "created_at": s.get("created_at").isoformat() if s.get("created_at") else None
             }
             for s in submissions_sorted

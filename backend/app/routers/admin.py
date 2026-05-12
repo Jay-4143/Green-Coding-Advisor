@@ -280,3 +280,21 @@ async def get_all_teams(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching teams: {str(e)}")
 
+@router.delete("/teams/{team_id}")
+async def delete_team(
+    team_id: int,
+    current_user: User = Depends(require_admin),
+    db: AsyncIOMotorDatabase = Depends(get_mongo_db)
+):
+    """Delete a team (admin only)"""
+    team = await db["teams"].find_one({"id": team_id})
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+    
+    # Delete team and related data
+    await db["teams"].delete_one({"id": team_id})
+    await db["team_members"].delete_many({"team_id": team_id})
+    await db["projects"].delete_many({"team_id": team_id})
+    
+    return {"message": "Team deleted successfully", "team_id": team_id}
+
