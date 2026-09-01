@@ -1,7 +1,7 @@
 # Core Framework
 fastapi==0.115.0
 uvicorn[standard]==0.30.6
-python-multipart==0.0.9
+python-multipart==0.0.20
 requests==2.32.3
 
 # Database & ORM
@@ -15,7 +15,7 @@ requests==2.32.3
 # Authentication & Security
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
-python-multipart==0.0.9
+python-multipart==0.0.20
 
 # AI/ML Libraries (Optional - install separately if needed)
 # torch>=2.6.0
